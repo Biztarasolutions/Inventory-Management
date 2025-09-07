@@ -1272,7 +1272,7 @@ function App() {
 
 function AppContent({ navOpen, setNavOpen }) {
   const location = useLocation();
-  // Removed unused sidebarWidth and setSidebarWidth
+  const [sidebarWidth, setSidebarWidth] = useState(200); // Default 200px (smaller than original w-64)
   const [isResizing, setIsResizing] = useState(false);
   
   const pageNames = {
