@@ -1293,14 +1293,13 @@ function AppContent({ navOpen, setNavOpen }) {
   // Handle mouse events for resizing
   // Removed unused handleMouseDown
 
-  const handleMouseMove = (e) => {
+  const handleMouseMove = React.useCallback((e) => {
     if (!isResizing) return;
-    
     const newWidth = e.clientX;
-    if (newWidth >= 150 && newWidth <= 300) { // Min 150px, Max 300px
+    if (newWidth >= 150 && newWidth <= 300) {
       setSidebarWidth(newWidth);
     }
-  };
+  }, [isResizing, setSidebarWidth]);
 
   const handleMouseUp = () => {
     setIsResizing(false);
