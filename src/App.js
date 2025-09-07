@@ -1326,7 +1326,7 @@ function AppContent({ navOpen, setNavOpen }) {
       document.body.style.cursor = '';
       document.body.style.userSelect = '';
     };
-  }, [isResizing]); // Removed handleMouseMove from dependency array
+  }, [isResizing, handleMouseMove]); // Added handleMouseMove to dependency array
 
   return (
     <div className="min-h-screen bg-white">
@@ -1339,7 +1339,7 @@ function AppContent({ navOpen, setNavOpen }) {
         {/* Left Navigation - Fixed, with partition line */}
         <nav 
           className={`bg-white pl-5 pr-1 pb-6 pt-2 flex flex-col space-y-4 border-r-2 border-gray-400 relative transition-all duration-300 flex-shrink-0 fixed left-0 top-16 bottom-0 z-40`}
-          style={{ width: navOpen ? '220px' : '64px' }}
+          style={{ width: navOpen ? `${sidebarWidth}px` : '64px' }}
         >
           {/* Arrow button at top right of partition line */}
           <button
