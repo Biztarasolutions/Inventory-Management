@@ -529,16 +529,7 @@ function AddStocks() {
     setFilteredInventoryHistory(sorted);
   }, [inventoryHistory, products, suppliers, brands, historyFilters, historySortConfig]);
 
-  const handleHistoryFilterChange = (column, selectedValues) => {
-    setHistoryFilters(prev => ({
-      ...prev,
-      [column]: selectedValues
-    }));
-  };
-
-  const handleHistorySort = (column, direction) => {
-    setHistorySortConfig({ key: column, direction });
-  };
+  // Removed unused handleHistoryFilterChange and handleHistorySort
 
   const resetHistoryFilters = () => {
     setHistoryFilters({
@@ -1281,7 +1272,7 @@ function App() {
 
 function AppContent({ navOpen, setNavOpen }) {
   const location = useLocation();
-  const [sidebarWidth, setSidebarWidth] = useState(200); // Default 200px (smaller than original w-64)
+  // Removed unused sidebarWidth and setSidebarWidth
   const [isResizing, setIsResizing] = useState(false);
   
   const pageNames = {
@@ -1300,10 +1291,7 @@ function AppContent({ navOpen, setNavOpen }) {
   ];
 
   // Handle mouse events for resizing
-  const handleMouseDown = (e) => {
-    setIsResizing(true);
-    e.preventDefault();
-  };
+  // Removed unused handleMouseDown
 
   const handleMouseMove = (e) => {
     if (!isResizing) return;
@@ -1338,7 +1326,7 @@ function AppContent({ navOpen, setNavOpen }) {
       document.body.style.cursor = '';
       document.body.style.userSelect = '';
     };
-  }, [isResizing, handleMouseMove]);
+  }, [isResizing]); // Removed handleMouseMove from dependency array
 
   return (
     <div className="min-h-screen bg-white">
