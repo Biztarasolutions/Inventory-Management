@@ -1481,6 +1481,7 @@ function CreateBill() {
 
   const fetchData = async () => {
     try {
+      // eslint-disable-next-line no-unused-vars
       const [inventoryData, productsData, suppliersData, brandsData] = await Promise.all([
         supabase.from('inventory').select('*'),
         supabase.from('products').select('*'),
