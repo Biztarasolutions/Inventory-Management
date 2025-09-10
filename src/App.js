@@ -164,10 +164,10 @@ function StockInventory() {
 
       <div className="bg-white rounded-lg shadow-md my-3">
         <div className="overflow-x-auto max-w-full">
-          <table className="w-full table-fixed md:min-w-[1200px]">
-            <thead className="bg-gray-50 sticky top-0 z-10">
+          <table className="w-full table-fixed md:min-w-[1200px] border-collapse">
+            <thead className="bg-gray-100 sticky top-0 z-10">
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b min-w-[120px] truncate">
+                <th className="px-3 py-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-b min-w-[130px] w-[10%]">
                   <FilterDropdown
                     label="Product Code"
                     options={[...new Set(aggregatedData.map(item => item.product_code))]}
@@ -175,7 +175,7 @@ function StockInventory() {
                     onChange={(values) => setFilters(prev => ({ ...prev, product_code: values }))}
                   />
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b min-w-[120px] truncate">
+                <th className="px-3 py-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-b min-w-[130px] w-[10%]">
                   <FilterDropdown
                     label="Style Code"
                     options={[...new Set(aggregatedData.map(item => item.style_code))]}
@@ -183,7 +183,7 @@ function StockInventory() {
                     onChange={(values) => setFilters(prev => ({ ...prev, style_code: values }))}
                   />
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b">
+                <th className="px-3 py-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-b min-w-[120px] w-[12%]">
                   <FilterDropdown
                     label="Supplier"
                     options={[...new Set(aggregatedData.map(item => item.supplier_name))]}
@@ -191,7 +191,7 @@ function StockInventory() {
                     onChange={(values) => setFilters(prev => ({ ...prev, supplier_name: values }))}
                   />
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b">
+                <th className="px-3 py-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-b min-w-[120px] w-[10%]">
                   <FilterDropdown
                     label="Brand"
                     options={[...new Set(aggregatedData.map(item => item.brand_name))]}
@@ -199,13 +199,13 @@ function StockInventory() {
                     onChange={(values) => setFilters(prev => ({ ...prev, brand_name: values }))}
                   />
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b">
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-b w-[8%] min-w-[80px]">
                   <span className="text-gray-700 font-medium">Image</span>
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b">
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-b w-[6%] min-w-[60px]">
                   <span className="text-gray-700 font-medium">MRP</span>
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b">
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-b min-w-[120px] w-[15%]">
                   <FilterDropdown
                     label="Sizes"
                     options={[...new Set(aggregatedData.flatMap(item => 
@@ -225,10 +225,10 @@ function StockInventory() {
                     onChange={(values) => setFilters(prev => ({ ...prev, sizes: values }))}
                   />
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b">
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-b w-[10%] min-w-[120px]">
                   <span className="text-gray-700 font-medium">Total Inventory</span>
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b">
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-b w-[8%] min-w-[100px]">
                   <span className="text-gray-700 font-medium">Actions</span>
                 </th>
               </tr>
@@ -782,10 +782,10 @@ function AddStocks() {
         
         <div className="bg-white rounded-lg shadow-md overflow-hidden my-3">
           <div className="overflow-x-auto max-w-full" style={{ maxHeight: 'calc(100vh - 280px)' }}>
-            <table className="w-full table-fixed md:min-w-[1200px]">
-              <thead className="bg-gray-50 sticky top-0 z-30">
+            <table className="w-full table-fixed md:min-w-[1200px] border-collapse">
+              <thead className="bg-gray-100 sticky top-0 z-30">
                 <tr>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b">
+                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-b min-w-[140px] w-[12%]">
                     <FilterDropdown
                       label="Date & Time"
                       options={[...new Set(enrichedInventoryHistory.map(item => item.formatted_date))]}
@@ -793,7 +793,7 @@ function AddStocks() {
                       onChange={(values) => setHistoryFilters(prev => ({ ...prev, datetime: values }))}
                     />
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b">
+                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-b min-w-[110px] w-[8%]">
                     <FilterDropdown
                       label="Action"
                       options={[...new Set(enrichedInventoryHistory.map(item => item.action))]}
@@ -801,7 +801,7 @@ function AddStocks() {
                       onChange={(values) => setHistoryFilters(prev => ({ ...prev, action: values }))}
                     />
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b">
+                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-b min-w-[130px] w-[10%]">
                     <FilterDropdown
                       label="Product Code"
                       options={[...new Set(enrichedInventoryHistory.map(item => item.product_code))]}
@@ -809,7 +809,7 @@ function AddStocks() {
                       onChange={(values) => setHistoryFilters(prev => ({ ...prev, product_code: values }))}
                     />
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b">
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-b min-w-[140px] w-[10%]">
                     <FilterDropdown
                       label="Style Code"
                       options={[...new Set(enrichedInventoryHistory.map(item => item.style_code))]}
@@ -1044,10 +1044,10 @@ function StockHistory() {
       
       <div className="bg-white rounded-lg shadow-md my-3">
         <div className="overflow-x-auto max-w-full" style={{ maxHeight: 'calc(100vh - 280px)' }}>
-          <table className="min-w-full md:min-w-[1200px] table-auto">
-            <thead className="bg-gray-50 sticky top-0 z-10">
+          <table className="min-w-full md:min-w-[1200px] table-auto border-collapse">
+            <thead className="bg-gray-100 sticky top-0 z-10">
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b">
+                <th className="px-3 py-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-b min-w-[140px] w-[12%]">
                   <FilterDropdown
                     label="Date & Time"
                     options={[...new Set(enrichedData.map(item => item.formatted_date))]}
@@ -1055,7 +1055,7 @@ function StockHistory() {
                     onChange={(values) => setFilters(prev => ({ ...prev, datetime: values }))}
                   />
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b">
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-b min-w-[140px] w-[10%]">
                   <FilterDropdown
                     label="Product Code"
                     options={[...new Set(enrichedData.map(item => item.product_code))]}
@@ -1063,7 +1063,7 @@ function StockHistory() {
                     onChange={(values) => setFilters(prev => ({ ...prev, product_code: values }))}
                   />
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b">
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-b min-w-[140px] w-[10%]">
                   <FilterDropdown
                     label="Style Code"
                     options={[...new Set(enrichedData.map(item => item.style_code))]}
@@ -1217,18 +1217,18 @@ function AddSupplier() {
           {supplierMsg && <div className="mt-2 text-sm text-black">{supplierMsg}</div>}
           <h3 className="text-lg font-semibold mb-2 text-black mt-6">Supplier List</h3>
           <div className="overflow-x-auto max-w-full">
-            <table className="w-full border text-black mb-6">
-              <thead className="bg-gray-200">
+            <table className="w-full border text-black mb-6 border-collapse">
+              <thead className="bg-gray-100">
                 <tr>
-                  <th className="border px-2 py-1">Supplier</th>
-                  <th className="border px-2 py-1">Date First Added</th>
+                  <th className="border px-3 py-2 text-left font-medium text-sm text-gray-700 w-[65%]">Supplier</th>
+                  <th className="border px-3 py-2 text-left font-medium text-sm text-gray-700 w-[35%]">Date First Added</th>
                 </tr>
               </thead>
               <tbody>
                 {suppliers.map((s, idx) => (
-                  <tr key={idx}>
-                    <td className="border px-2 py-1">{s.name}</td>
-                    <td className="border px-2 py-1">{s.date}</td>
+                  <tr key={idx} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                    <td className="border px-3 py-2 text-gray-800">{s.name}</td>
+                    <td className="border px-3 py-2 text-gray-800">{s.date}</td>
                   </tr>
                 ))}
               </tbody>
@@ -1243,18 +1243,18 @@ function AddSupplier() {
           {brandMsg && <div className="mt-2 text-sm text-black">{brandMsg}</div>}
           <h3 className="text-lg font-semibold mb-2 text-black mt-6">Brand List</h3>
           <div className="overflow-x-auto max-w-full">
-            <table className="w-full border text-black">
-              <thead className="bg-gray-200">
+            <table className="w-full border text-black border-collapse">
+              <thead className="bg-gray-100">
                 <tr>
-                  <th className="border px-2 py-1">Brand</th>
-                  <th className="border px-2 py-1">Date First Added</th>
+                  <th className="border px-3 py-2 text-left font-medium text-sm text-gray-700 w-[65%]">Brand</th>
+                  <th className="border px-3 py-2 text-left font-medium text-sm text-gray-700 w-[35%]">Date First Added</th>
                 </tr>
               </thead>
               <tbody>
                 {brands.map((b, idx) => (
-                  <tr key={idx}>
-                    <td className="border px-2 py-1">{b.name}</td>
-                    <td className="border px-2 py-1">{b.date}</td>
+                  <tr key={idx} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                    <td className="border px-3 py-2 text-gray-800">{b.name}</td>
+                    <td className="border px-3 py-2 text-gray-800">{b.date}</td>
                   </tr>
                 ))}
               </tbody>
@@ -1339,26 +1339,34 @@ function AppContent({ navOpen, setNavOpen }) {
         <span>Inventory Management</span>
         <span className="ml-4 text-lg font-normal">{currentPage}</span>
       </header>
-      <div className="flex pt-16"> {/* Add top padding for fixed header */}
-        {/* Left Navigation - Fixed, with partition line */}
+      <div className="flex pt-16 bg-gray-50"> {/* Add top padding for fixed header */}
+        {/* Left Navigation - Fixed, with subtle shadow partition */}
         <nav 
-          className={`bg-white pl-5 pr-1 pb-6 pt-2 flex flex-col space-y-4 border-r-2 border-gray-400 relative transition-all duration-300 flex-shrink-0 fixed left-0 top-16 bottom-0 z-40 mobile-nav-transition`}
-          style={{ width: navOpen ? `${sidebarWidth}px` : '64px' }}
+          className={`bg-white pl-5 pr-1 pb-6 pt-2 flex flex-col space-y-4 relative transition-all duration-300 flex-shrink-0 fixed left-0 top-16 bottom-0 z-40 mobile-nav-transition`}
+          style={{ 
+            width: navOpen ? `${sidebarWidth}px` : '64px',
+            boxShadow: '2px 0 10px rgba(0, 0, 0, 0.05)'
+          }}
         >
-          {/* Arrow button at top right of partition line */}
+          {/* Toggle button with square/collapse icon */}
           <button
-            className="absolute top-2 right-[-12px] bg-gray-300 text-black rounded-full p-1 shadow border border-gray-400 z-50 mobile-hidden"
-            style={{ width: '24px', height: '24px' }}
+            className="absolute top-2 right-[-16px] bg-white text-gray-700 rounded p-1 shadow-md z-50 mobile-hidden hover:bg-gray-100 transition-all"
+            style={{ width: '32px', height: '32px' }}
             onClick={() => setNavOpen((v) => !v)}
-            aria-label={navOpen ? 'Minimize navigation' : 'Expand navigation'}
+            aria-label={navOpen ? 'Collapse sidebar' : 'Expand sidebar'}
           >
             {navOpen ? (
-              <svg width="12" height="12" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M12 5L7 10L12 15" stroke="black" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <rect x="8" y="8" width="8" height="8" rx="1" stroke="currentColor" strokeWidth="2" />
+                <path d="M5 5L19 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                <path d="M5 19L19 19" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
               </svg>
             ) : (
-              <svg width="12" height="12" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M8 5L13 10L8 15" stroke="black" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <rect x="4" y="4" width="16" height="16" rx="1" stroke="currentColor" strokeWidth="2" />
+                <path d="M8 8L16 8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                <path d="M8 12L16 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                <path d="M8 16L16 16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
               </svg>
             )}
           </button>
@@ -1387,7 +1395,7 @@ function AppContent({ navOpen, setNavOpen }) {
         </nav>
         {/* Main Content */}
         <main 
-          className="flex-1 min-w-0 transition-all duration-300 p-3"
+          className="flex-1 min-w-0 transition-all duration-300 p-4 bg-gray-50"
         >
           {/* Content */}
           <div>

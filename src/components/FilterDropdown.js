@@ -49,18 +49,18 @@ const FilterDropdown = ({ label, options, selectedValues, onChange }) => {
     <div className="relative" ref={dropdownRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full min-w-[160px] px-2 py-1 text-left bg-gray-50 border border-gray-200 rounded-md shadow-sm hover:border-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-200 focus:outline-none transition-colors text-sm"
+        className="w-full min-w-[120px] px-2 py-1 text-left bg-gray-50 border border-gray-200 rounded-md shadow-sm hover:border-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-200 focus:outline-none transition-colors text-sm"
       >
         <div className="flex justify-between items-center">
-          <span className="text-gray-800 truncate font-medium text-xs uppercase tracking-wider">{label}</span>
-          <div className="flex items-center ml-1">
+          <span className="text-gray-800 font-medium text-xs uppercase tracking-wider max-w-[100px] truncate">{label}</span>
+          <div className="flex items-center ml-1 flex-shrink-0">
             {selectedValues.length > 0 && selectedValues.length < options.length && (
-              <span className="bg-blue-500 text-white rounded-full px-1.5 py-0.5 text-xs mr-1 font-medium">
+              <span className="bg-blue-500 text-white rounded-full px-1 py-0 text-[10px] mr-1 font-medium">
                 {selectedValues.length}
               </span>
             )}
             <svg
-              className={`w-3 h-3 text-gray-500 transition-transform ${isOpen ? 'rotate-180' : ''}`}
+              className={`w-3 h-3 text-gray-500 transition-transform flex-shrink-0 ${isOpen ? 'rotate-180' : ''}`}
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -72,7 +72,7 @@ const FilterDropdown = ({ label, options, selectedValues, onChange }) => {
       </button>
 
       {isOpen && (
-        <div className="absolute z-50 w-80 mt-1 bg-white border border-gray-300 rounded-lg shadow-lg">
+        <div className="absolute z-50 w-64 mt-1 bg-white border border-gray-300 rounded-lg shadow-lg left-0">
           {/* Search Input */}
           <div className="p-3 border-b border-gray-200">
             <input

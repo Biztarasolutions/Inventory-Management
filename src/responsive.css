@@ -73,11 +73,40 @@
   
   table {
     min-width: 650px !important; /* Ensure tables have minimum width */
+    border-collapse: collapse !important;
   }
   
   th, td {
     padding: 8px 4px !important;
     font-size: 0.85rem !important;
+  }
+  
+  /* Enhance table readability on mobile */
+  th {
+    font-weight: 600 !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    background-color: #f3f4f6 !important;
+    padding: 6px 4px !important;
+  }
+  
+  /* Ensure filter button text fits without overlapping */
+  th button {
+    padding-left: 4px !important;
+    padding-right: 4px !important;
+  }
+  
+  /* Alternating row colors for better readability */
+  tbody tr:nth-child(even) {
+    background-color: #f9fafb !important;
+  }
+  
+  /* Hover effect on desktop */
+  @media (min-width: 769px) {
+    tbody tr:hover {
+      background-color: #f0f9ff !important;
+    }
   }
   
   /* Hide column labels on mobile, show icons instead */
@@ -102,6 +131,20 @@
   .filter-dropdown {
     max-width: 100%;
     z-index: 40;
+  }
+  
+  /* Ensure dropdown button text is visible */
+  th button span {
+    max-width: 85px !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+  }
+  
+  /* Position dropdown menu better on small screens */
+  th .absolute {
+    max-width: 90vw !important;
+    right: 0 !important;
   }
   
   /* Adjust form elements for mobile */
@@ -189,6 +232,20 @@
   table {
     min-width: 600px !important;
   }
+  
+  /* Better column sizing for tablet view */
+  th, td {
+    padding: 10px 8px !important;
+  }
+  
+  /* Filter dropdowns positioning for tablets */
+  th button {
+    min-width: 110px !important;
+  }
+  
+  th .absolute {
+    width: 250px !important;
+  }
 }
 
 /* Print styles - hide navigation when printing */
@@ -224,6 +281,23 @@
   
   .desktop-hidden {
     display: none !important;
+  }
+  
+  /* Enhanced desktop navigation styling */
+  nav.fixed {
+    border-right: none !important;
+    background-color: white;
+  }
+  
+  /* Improve active state styling */
+  nav.fixed a.text-white {
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    transition: all 0.2s ease;
+  }
+  
+  /* Add hover effect to toggle button */
+  nav.fixed button:hover {
+    transform: scale(1.05);
   }
 }
 
