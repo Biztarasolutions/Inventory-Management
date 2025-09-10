@@ -1380,7 +1380,7 @@ function AppContent({ navOpen, setNavOpen }) {
               {/* For mobile: always show icon with label underneath */}
               <span className="mobile-view desktop-hidden">
                 <span className="block text-center">{link.icon}</span>
-                <span className="text-xs block mt-1">{link.label.split(' ')[0]}</span>
+                <span className="text-xs block mt-1 nav-label">{link.label}</span>
               </span>
             </Link>
           ))}

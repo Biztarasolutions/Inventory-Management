@@ -15,7 +15,7 @@
     left: 0 !important;
     right: 0 !important;
     width: 100% !important;
-    height: 60px;
+    height: 70px;
     flex-direction: row !important;
     justify-content: space-around;
     align-items: center;
@@ -33,11 +33,22 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    padding: 6px !important;
+    padding: 6px 2px !important;
     width: 100%;
-    max-width: 70px;
+    max-width: 80px;
     font-size: 0.7rem !important;
     text-align: center;
+    overflow: hidden;
+  }
+  
+  /* Ensure navigation labels are properly sized and truncated */
+  nav.fixed .nav-label {
+    width: 100%;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: 0.65rem !important;
+    line-height: 1.2;
   }
   
   /* Hide the collapse button on mobile */
@@ -47,7 +58,7 @@
   
   /* Main content padding to account for bottom nav */
   main {
-    padding-bottom: 70px !important;
+    padding-bottom: 80px !important; /* Increased to ensure content doesn't overlap with navigation */
     margin-left: 0 !important;
     width: 100% !important;
     padding-left: 8px !important;
@@ -140,6 +151,12 @@
   /* Add spacing between items */
   .space-y-4 {
     margin-bottom: 12px;
+  }
+  
+  /* Ensure no content overlaps with the fixed bottom navigation */
+  main > div:last-child {
+    margin-bottom: 80px; /* Additional space at the bottom of content */
+    padding-bottom: 10px;
   }
 }
 
