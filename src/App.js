@@ -151,9 +151,50 @@ function StockInventory() {
     setSortConfig({ key: null, direction: 'asc' });
   };
 
+  // Calculate total inventory and inventory by size
+  const calculateTotalInventory = () => {
+    let total = 0;
+    const sizeInventory = {};
+    
+    filteredData.forEach(item => {
+      item.sizes.forEach((quantity, size) => {
+        total += quantity;
+        sizeInventory[size] = (sizeInventory[size] || 0) + quantity;
+      });
+    });
+    
+    return { total, sizeInventory };
+  };
+  
+  const { total, sizeInventory } = calculateTotalInventory();
+  
+  // Sort sizes for display
+  const sortedSizes = Object.keys(sizeInventory).sort((a, b) => {
+    const sizeOrder = ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL'];
+    const aIndex = sizeOrder.indexOf(a);
+    const bIndex = sizeOrder.indexOf(b);
+    if (aIndex !== -1 && bIndex !== -1) return aIndex - bIndex;
+    if (aIndex !== -1) return -1;
+    if (bIndex !== -1) return 1;
+    return a.localeCompare(b);
+  });
+
   return (
     <div className="p-6 pl-2">
-      <div className="flex justify-end items-center mb-6">
+      <div className="flex flex-wrap justify-between items-center mb-6">
+        <div className="bg-white p-3 rounded-lg shadow-sm mb-2 md:mb-0">
+          <h3 className="text-sm font-medium text-gray-700 mb-2">Inventory Summary:</h3>
+          <div className="flex flex-wrap gap-3 items-center">
+            <div className="bg-blue-100 px-3 py-1 rounded-md">
+              <span className="font-medium">Total: {total}</span>
+            </div>
+            {sortedSizes.map(size => (
+              <div key={size} className="bg-gray-100 px-3 py-1 rounded-md">
+                <span className="font-medium">{size}: {sizeInventory[size]}</span>
+              </div>
+            ))}
+          </div>
+        </div>
         <button
           onClick={resetAllFilters}
           className="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600"
@@ -166,8 +207,8 @@ function StockInventory() {
         <div className="overflow-x-auto max-w-full">
           <table className="w-full table-fixed md:min-w-[1200px] border-collapse">
             <thead className="bg-gray-100 sticky top-0 z-10">
-              <tr>
-                <th className="px-3 py-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-b min-w-[130px] w-[10%]">
+              <tr className="grid-cols-auto">
+                <th className="p-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-b min-w-[110px] w-[10%]">
                   <FilterDropdown
                     label="Product Code"
                     options={[...new Set(aggregatedData.map(item => item.product_code))]}
@@ -175,15 +216,15 @@ function StockInventory() {
                     onChange={(values) => setFilters(prev => ({ ...prev, product_code: values }))}
                   />
                 </th>
-                <th className="px-3 py-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-b min-w-[130px] w-[10%]">
+                <th className="p-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-b min-w-[110px] w-[10%]">
                   <FilterDropdown
-                    label="Style Code"
+                    label="Style"
                     options={[...new Set(aggregatedData.map(item => item.style_code))]}
                     selectedValues={filters.style_code}
                     onChange={(values) => setFilters(prev => ({ ...prev, style_code: values }))}
                   />
                 </th>
-                <th className="px-3 py-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-b min-w-[120px] w-[12%]">
+                <th className="p-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-b min-w-[110px] w-[12%]">
                   <FilterDropdown
                     label="Supplier"
                     options={[...new Set(aggregatedData.map(item => item.supplier_name))]}
@@ -191,7 +232,7 @@ function StockInventory() {
                     onChange={(values) => setFilters(prev => ({ ...prev, supplier_name: values }))}
                   />
                 </th>
-                <th className="px-3 py-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-b min-w-[120px] w-[10%]">
+                <th className="p-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-b min-w-[100px] w-[10%]">
                   <FilterDropdown
                     label="Brand"
                     options={[...new Set(aggregatedData.map(item => item.brand_name))]}
@@ -199,13 +240,13 @@ function StockInventory() {
                     onChange={(values) => setFilters(prev => ({ ...prev, brand_name: values }))}
                   />
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-b w-[8%] min-w-[80px]">
+                <th className="p-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-b w-[8%] min-w-[80px]">
                   <span className="text-gray-700 font-medium">Image</span>
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-b w-[6%] min-w-[60px]">
+                <th className="p-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-b w-[6%] min-w-[60px]">
                   <span className="text-gray-700 font-medium">MRP</span>
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-b min-w-[120px] w-[15%]">
+                <th className="p-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-b min-w-[120px] w-[15%]">
                   <FilterDropdown
                     label="Sizes"
                     options={[...new Set(aggregatedData.flatMap(item => 
@@ -225,10 +266,10 @@ function StockInventory() {
                     onChange={(values) => setFilters(prev => ({ ...prev, sizes: values }))}
                   />
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-b w-[10%] min-w-[120px]">
+                <th className="p-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-b w-[10%] min-w-[120px]">
                   <span className="text-gray-700 font-medium">Total Inventory</span>
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-b w-[8%] min-w-[100px]">
+                <th className="p-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-b w-[8%] min-w-[100px]">
                   <span className="text-gray-700 font-medium">Actions</span>
                 </th>
               </tr>
@@ -659,7 +700,7 @@ function AddStocks() {
               <input type="text" pattern="^[1-9][0-9]{4}$" maxLength={5} value={code} onChange={e => { const val = e.target.value; if (/^[1-9][0-9]{0,4}$/.test(val) || val === "") { setCode(val); } }} className="border px-2 py-1 w-full" required inputMode="numeric" title="Enter a 5-digit positive integer" />
             </div>
             <div>
-              <label className="block text-black mb-1">Style Code</label>
+              <label className="block text-black mb-1">Style</label>
               <input type="text" value={`FS-${code}`} readOnly className="border px-2 py-1 w-full bg-gray-100" />
             </div>
             <div>
@@ -785,15 +826,15 @@ function AddStocks() {
             <table className="w-full table-fixed md:min-w-[1200px] border-collapse">
               <thead className="bg-gray-100 sticky top-0 z-30">
                 <tr>
-                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-b min-w-[140px] w-[12%]">
+                  <th className="p-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-b min-w-[110px] w-[10%]">
                     <FilterDropdown
-                      label="Date & Time"
+                      label="Date"
                       options={[...new Set(enrichedInventoryHistory.map(item => item.formatted_date))]}
                       selectedValues={historyFilters.datetime}
                       onChange={(values) => setHistoryFilters(prev => ({ ...prev, datetime: values }))}
                     />
                   </th>
-                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-b min-w-[110px] w-[8%]">
+                  <th className="p-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-b min-w-[110px] w-[8%]">
                     <FilterDropdown
                       label="Action"
                       options={[...new Set(enrichedInventoryHistory.map(item => item.action))]}
@@ -801,7 +842,7 @@ function AddStocks() {
                       onChange={(values) => setHistoryFilters(prev => ({ ...prev, action: values }))}
                     />
                   </th>
-                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-b min-w-[130px] w-[10%]">
+                  <th className="p-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-b min-w-[110px] w-[10%]">
                     <FilterDropdown
                       label="Product Code"
                       options={[...new Set(enrichedInventoryHistory.map(item => item.product_code))]}
@@ -809,15 +850,15 @@ function AddStocks() {
                       onChange={(values) => setHistoryFilters(prev => ({ ...prev, product_code: values }))}
                     />
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-b min-w-[140px] w-[10%]">
+                  <th className="p-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-b min-w-[110px] w-[10%]">
                     <FilterDropdown
-                      label="Style Code"
+                      label="Style"
                       options={[...new Set(enrichedInventoryHistory.map(item => item.style_code))]}
                       selectedValues={historyFilters.style_code}
                       onChange={(values) => setHistoryFilters(prev => ({ ...prev, style_code: values }))}
                     />
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b">
+                  <th className="p-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b">
                     <FilterDropdown
                       label="Supplier"
                       options={[...new Set(enrichedInventoryHistory.map(item => item.supplier_name))]}
@@ -825,7 +866,7 @@ function AddStocks() {
                       onChange={(values) => setHistoryFilters(prev => ({ ...prev, supplier: values }))}
                     />
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b">
+                  <th className="p-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b">
                     <FilterDropdown
                       label="Brand"
                       options={[...new Set(enrichedInventoryHistory.map(item => item.brand_name))]}
@@ -833,13 +874,13 @@ function AddStocks() {
                       onChange={(values) => setHistoryFilters(prev => ({ ...prev, brand: values }))}
                     />
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b">
+                  <th className="p-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b">
                     <span className="text-gray-700 font-medium">Image</span>
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b">
+                  <th className="p-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b">
                     <span className="text-gray-700 font-medium">MRP</span>
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b">
+                  <th className="p-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b">
                     <FilterDropdown
                       label="Size"
                       options={[...new Set(enrichedInventoryHistory.map(item => item.size))].sort((a, b) => {
@@ -855,10 +896,10 @@ function AddStocks() {
                       onChange={(values) => setHistoryFilters(prev => ({ ...prev, size: values }))}
                     />
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b">
+                  <th className="p-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b">
                     <span className="text-gray-700 font-medium">Quantity</span>
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b">
+                  <th className="p-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b">
                     <FilterDropdown
                       label="Note"
                       options={[...new Set(enrichedInventoryHistory.map(item => item.note || '').filter(note => note !== ''))]}
@@ -1047,15 +1088,15 @@ function StockHistory() {
           <table className="min-w-full md:min-w-[1200px] table-auto border-collapse">
             <thead className="bg-gray-100 sticky top-0 z-10">
               <tr>
-                <th className="px-3 py-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-b min-w-[140px] w-[12%]">
+                <th className="p-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-b min-w-[110px] w-[10%]">
                   <FilterDropdown
-                    label="Date & Time"
+                    label="Date"
                     options={[...new Set(enrichedData.map(item => item.formatted_date))]}
                     selectedValues={filters.datetime}
                     onChange={(values) => setFilters(prev => ({ ...prev, datetime: values }))}
                   />
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-b min-w-[140px] w-[10%]">
+                <th className="p-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-b min-w-[110px] w-[10%]">
                   <FilterDropdown
                     label="Product Code"
                     options={[...new Set(enrichedData.map(item => item.product_code))]}
@@ -1063,15 +1104,15 @@ function StockHistory() {
                     onChange={(values) => setFilters(prev => ({ ...prev, product_code: values }))}
                   />
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-b min-w-[140px] w-[10%]">
+                <th className="p-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-b min-w-[110px] w-[10%]">
                   <FilterDropdown
-                    label="Style Code"
+                    label="Style"
                     options={[...new Set(enrichedData.map(item => item.style_code))]}
                     selectedValues={filters.style_code}
                     onChange={(values) => setFilters(prev => ({ ...prev, style_code: values }))}
                   />
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b">
+                <th className="p-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b">
                   <FilterDropdown
                     label="Supplier"
                     options={[...new Set(enrichedData.map(item => item.supplier_name))]}
@@ -1079,7 +1120,7 @@ function StockHistory() {
                     onChange={(values) => setFilters(prev => ({ ...prev, supplier: values }))}
                   />
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b">
+                <th className="p-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b">
                   <FilterDropdown
                     label="Brand"
                     options={[...new Set(enrichedData.map(item => item.brand_name))]}
@@ -1087,10 +1128,10 @@ function StockHistory() {
                     onChange={(values) => setFilters(prev => ({ ...prev, brand: values }))}
                   />
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b">
+                <th className="p-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b">
                   <span className="text-gray-700 font-medium">MRP</span>
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b">
+                <th className="p-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b">
                   <FilterDropdown
                     label="Size"
                     options={[...new Set(enrichedData.map(item => item.size))].sort((a, b) => {
@@ -1106,10 +1147,10 @@ function StockHistory() {
                     onChange={(values) => setFilters(prev => ({ ...prev, size: values }))}
                   />
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b">
+                <th className="p-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b">
                   <span className="text-gray-700 font-medium">Quantity</span>
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b">
+                <th className="p-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b">
                   <FilterDropdown
                     label="Note"
                     options={[...new Set(enrichedData.map(item => item.note || '').filter(note => note !== ''))]}
@@ -1220,8 +1261,8 @@ function AddSupplier() {
             <table className="w-full border text-black mb-6 border-collapse">
               <thead className="bg-gray-100">
                 <tr>
-                  <th className="border px-3 py-2 text-left font-medium text-sm text-gray-700 w-[65%]">Supplier</th>
-                  <th className="border px-3 py-2 text-left font-medium text-sm text-gray-700 w-[35%]">Date First Added</th>
+                  <th className="border p-2 text-left font-medium text-sm text-gray-700 w-[65%]">Supplier</th>
+                  <th className="border p-2 text-left font-medium text-sm text-gray-700 w-[35%]">Date First Added</th>
                 </tr>
               </thead>
               <tbody>
@@ -1246,8 +1287,8 @@ function AddSupplier() {
             <table className="w-full border text-black border-collapse">
               <thead className="bg-gray-100">
                 <tr>
-                  <th className="border px-3 py-2 text-left font-medium text-sm text-gray-700 w-[65%]">Brand</th>
-                  <th className="border px-3 py-2 text-left font-medium text-sm text-gray-700 w-[35%]">Date First Added</th>
+                  <th className="border p-2 text-left font-medium text-sm text-gray-700 w-[65%]">Brand</th>
+                  <th className="border p-2 text-left font-medium text-sm text-gray-700 w-[35%]">Date First Added</th>
                 </tr>
               </thead>
               <tbody>
@@ -1289,6 +1330,7 @@ function AppContent({ navOpen, setNavOpen }) {
   };
   const currentPage = pageNames[location.pathname] || '';
   const navLinks = [
+    { to: '/create-bill', label: 'Create Bill', icon: '🧾' },
     { to: '/add-stocks', label: 'Add Stocks', icon: '📦' },
     { to: '/stock-inventory', label: 'Stock Inventory', icon: '📋' },
     { to: '/stock-history', label: 'Stock History', icon: '🕑' },
@@ -1400,14 +1442,388 @@ function AppContent({ navOpen, setNavOpen }) {
           {/* Content */}
           <div>
             <Routes>
+              <Route path="/create-bill" element={<CreateBill />} />
               <Route path="/add-stocks" element={<AddStocks />} />
               <Route path="/stock-inventory" element={<StockInventory />} />
               <Route path="/stock-history" element={<StockHistory />} />
               <Route path="/add-supplier" element={<AddSupplier />} />
-              <Route path="/" element={<AddStocks />} />
+              <Route path="/" element={<CreateBill />} />
             </Routes>
           </div>
         </main>
+      </div>
+    </div>
+  );
+}
+
+function CreateBill() {
+  // State for form fields
+  const [customer, setCustomer] = useState({
+    name: '',
+    phone: ''
+  });
+  const [billItems, setBillItems] = useState([
+    { id: 1, product_code: '', size: '', mrp: 0, quantity: 1, total: 0 }
+  ]);
+  const [discount, setDiscount] = useState({
+    type: 'percentage', // 'percentage' or 'amount'
+    value: 0
+  });
+  const [inventory, setInventory] = useState([]);
+  const [products, setProducts] = useState([]);
+  const [productOptions, setProductOptions] = useState([]);
+  const [sizeOptions, setSizeOptions] = useState({});
+
+  // Fetch data on component mount
+  React.useEffect(() => {
+    fetchData();
+  }, []);
+
+  const fetchData = async () => {
+    try {
+      const [inventoryData, productsData, suppliersData, brandsData] = await Promise.all([
+        supabase.from('inventory').select('*'),
+        supabase.from('products').select('*'),
+        supabase.from('suppliers').select('*'),
+        supabase.from('brands').select('*')
+      ]);
+
+      const inventoryItems = inventoryData.data || [];
+      const productItems = productsData.data || [];
+      
+      setInventory(inventoryItems);
+      setProducts(productItems);
+      
+      // Prepare product options for dropdown - only include products that have inventory
+      const productCodesWithInventory = new Set();
+      inventoryItems.forEach(item => {
+        const product = productItems.find(p => p.id === item.product_id);
+        if (product) {
+          productCodesWithInventory.add(product.product_code);
+        }
+      });
+      
+      const productOpts = Array.from(productCodesWithInventory).map(code => ({ 
+        label: code, 
+        value: code 
+      }));
+      
+      setProductOptions(productOpts);
+      
+      // Prepare size options for each product code
+      const sizeOpts = {};
+      inventoryData.data?.forEach(item => {
+        const product = productsData.data?.find(p => p.id === item.product_id);
+        if (product) {
+          const productCode = product.product_code;
+          if (!sizeOpts[productCode]) {
+            sizeOpts[productCode] = [];
+          }
+          if (item.size && !sizeOpts[productCode].includes(item.size)) {
+            sizeOpts[productCode].push(item.size);
+          }
+        }
+      });
+      setSizeOptions(sizeOpts);
+    } catch (error) {
+      console.error('Error fetching data:', error);
+    }
+  };
+
+  // Handle changes in bill items
+  const handleBillItemChange = (index, field, value) => {
+    const newBillItems = [...billItems];
+    newBillItems[index][field] = value;
+
+    // If product_code changes, update available sizes and reset size
+    if (field === 'product_code') {
+      newBillItems[index].size = '';
+      newBillItems[index].mrp = 0;
+      newBillItems[index].total = 0;
+    }
+
+    // If size changes or product changes, update MRP
+    if (field === 'size' || field === 'product_code') {
+      const product_code = newBillItems[index].product_code;
+      const size = field === 'size' ? value : newBillItems[index].size;
+      
+      if (product_code && size) {
+        // Find the product and its MRP
+        const product = products.find(p => p.product_code === product_code);
+        if (product) {
+          // Find specific inventory item with this product and size to get accurate MRP
+          const inventoryItem = inventory.find(item => 
+            item.product_id === product.id && item.size === size
+          );
+          
+          // Use product's MRP or inventory item MRP if available
+          const mrpValue = (inventoryItem && inventoryItem.mrp) || product.mrp || 0;
+          newBillItems[index].mrp = mrpValue;
+          newBillItems[index].total = mrpValue * newBillItems[index].quantity;
+        }
+      }
+    }
+
+    // If quantity changes, update total
+    if (field === 'quantity') {
+      newBillItems[index].total = newBillItems[index].mrp * value;
+    }
+
+    setBillItems(newBillItems);
+  };
+
+  // Add a new item to the bill
+  const addBillItem = () => {
+    setBillItems([
+      ...billItems, 
+      { 
+        id: billItems.length + 1, 
+        product_code: '', 
+        size: '', 
+        mrp: 0, 
+        quantity: 1, 
+        total: 0 
+      }
+    ]);
+  };
+
+  // Remove an item from the bill
+  const removeBillItem = (index) => {
+    if (billItems.length > 1) {
+      const newBillItems = [...billItems];
+      newBillItems.splice(index, 1);
+      setBillItems(newBillItems);
+    }
+  };
+
+  // Calculate subtotal
+  const calculateSubtotal = () => {
+    return billItems.reduce((sum, item) => sum + item.total, 0);
+  };
+
+  // Calculate discount amount
+  const calculateDiscountAmount = () => {
+    const subtotal = calculateSubtotal();
+    if (discount.type === 'percentage') {
+      return (subtotal * discount.value) / 100;
+    }
+    return discount.value;
+  };
+
+  // Calculate total after discount
+  const calculateTotal = () => {
+    return calculateSubtotal() - calculateDiscountAmount();
+  };
+
+  // Handle printing the bill
+  const handlePrintBill = () => {
+    window.print();
+  };
+
+  // Get available sizes for a product code
+  const getAvailableSizes = (productCode) => {
+    return sizeOptions[productCode] || [];
+  };
+
+  return (
+    <div className="p-6">
+      <div className="bg-white rounded-lg shadow-md p-6">
+        <h1 className="text-2xl font-bold mb-6">Create Bill</h1>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+          {/* Customer Information */}
+          <div className="bg-gray-50 p-4 rounded-md">
+            <h2 className="text-lg font-semibold mb-3">Customer Information</h2>
+            <div className="mb-3">
+              <label className="block text-sm font-medium text-gray-700 mb-1">Customer Name</label>
+              <input
+                type="text"
+                className="w-full p-2 border rounded-md"
+                value={customer.name}
+                onChange={(e) => setCustomer({...customer, name: e.target.value})}
+                placeholder="Enter customer name"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
+              <input
+                type="text"
+                className="w-full p-2 border rounded-md"
+                value={customer.phone}
+                onChange={(e) => setCustomer({...customer, phone: e.target.value})}
+                placeholder="Enter phone number"
+              />
+            </div>
+          </div>
+          
+          {/* Bill Summary */}
+          <div className="bg-gray-50 p-4 rounded-md">
+            <h2 className="text-lg font-semibold mb-3">Bill Summary</h2>
+            <div className="flex justify-between mb-2">
+              <span>Subtotal:</span>
+              <span>₹{calculateSubtotal().toFixed(2)}</span>
+            </div>
+            <div className="flex justify-between mb-2">
+              <span>Discount:</span>
+              <span>₹{calculateDiscountAmount().toFixed(2)}</span>
+            </div>
+            <div className="flex justify-between font-bold text-lg">
+              <span>Total:</span>
+              <span>₹{calculateTotal().toFixed(2)}</span>
+            </div>
+            <button
+              onClick={handlePrintBill}
+              className="mt-4 w-full bg-blue-600 text-white py-2 px-4 rounded hover:bg-blue-700"
+            >
+              Print Bill
+            </button>
+          </div>
+        </div>
+        
+        {/* Discount Options */}
+        <div className="mb-6 p-4 border rounded-md bg-gray-50">
+          <h2 className="text-lg font-semibold mb-3">Discount</h2>
+          <div className="flex items-center gap-4">
+            <div className="flex items-center">
+              <input
+                type="radio"
+                id="percentage"
+                name="discountType"
+                checked={discount.type === 'percentage'}
+                onChange={() => setDiscount({...discount, type: 'percentage'})}
+                className="mr-2"
+              />
+              <label htmlFor="percentage">Percentage (%)</label>
+            </div>
+            <div className="flex items-center">
+              <input
+                type="radio"
+                id="amount"
+                name="discountType"
+                checked={discount.type === 'amount'}
+                onChange={() => setDiscount({...discount, type: 'amount'})}
+                className="mr-2"
+              />
+              <label htmlFor="amount">Amount (₹)</label>
+            </div>
+            <input
+              type="number"
+              min="0"
+              className="p-2 border rounded-md w-32"
+              value={discount.value}
+              onChange={(e) => setDiscount({...discount, value: parseFloat(e.target.value) || 0})}
+            />
+          </div>
+        </div>
+        
+        {/* Bill Items Table */}
+        <div className="overflow-x-auto">
+          <table className="w-full border-collapse mb-4">
+            <thead>
+              <tr className="bg-gray-100">
+                <th className="p-2 text-left font-medium border">Product Code</th>
+                <th className="p-2 text-left font-medium border">Size</th>
+                <th className="p-2 text-left font-medium border">MRP (₹)</th>
+                <th className="p-2 text-left font-medium border">Quantity</th>
+                <th className="p-2 text-left font-medium border">Total (₹)</th>
+                <th className="p-2 text-left font-medium border">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {billItems.map((item, index) => (
+                <tr key={item.id} className={index % 2 === 0 ? "bg-white" : "bg-gray-50"}>
+                  <td className="p-2 border">
+                    <SearchableDropdown
+                      options={productOptions}
+                      value={item.product_code ? { label: item.product_code, value: item.product_code } : null}
+                      onChange={(selected) => {
+                        // Handle both string and object options
+                        const value = typeof selected === 'string' ? selected : (selected ? selected.value : '');
+                        handleBillItemChange(index, 'product_code', value);
+                      }}
+                      placeholder="Select product"
+                      className="w-full"
+                    />
+                  </td>
+                  <td className="p-2 border">
+                    <select
+                      className="w-full p-2 border rounded"
+                      value={item.size}
+                      onChange={(e) => handleBillItemChange(index, 'size', e.target.value)}
+                      disabled={!item.product_code}
+                    >
+                      <option value="">Select Size</option>
+                      {getAvailableSizes(item.product_code).map((size) => (
+                        <option key={size} value={size}>{size}</option>
+                      ))}
+                    </select>
+                  </td>
+                  <td className="p-2 border">
+                    <input
+                      type="number"
+                      className="w-full p-2 border rounded"
+                      value={item.mrp}
+                      readOnly
+                    />
+                  </td>
+                  <td className="p-2 border">
+                    <input
+                      type="number"
+                      min="1"
+                      className="w-full p-2 border rounded"
+                      value={item.quantity}
+                      onChange={(e) => handleBillItemChange(index, 'quantity', parseInt(e.target.value) || 1)}
+                    />
+                  </td>
+                  <td className="p-2 border">
+                    {item.total.toFixed(2)}
+                  </td>
+                  <td className="p-2 border">
+                    <button
+                      onClick={() => removeBillItem(index)}
+                      className="text-red-500 hover:text-red-700"
+                      disabled={billItems.length === 1}
+                    >
+                      Remove
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        
+        <button
+          onClick={addBillItem}
+          className="bg-gray-200 text-black py-2 px-4 rounded hover:bg-gray-300 mb-4"
+        >
+          + Add Item
+        </button>
+        
+        {/* Print-specific styles */}
+        <style type="text/css" media="print">
+          {`
+          @media print {
+            body * {
+              visibility: hidden;
+            }
+            .bg-white.rounded-lg.shadow-md.p-6, .bg-white.rounded-lg.shadow-md.p-6 * {
+              visibility: visible;
+            }
+            .bg-white.rounded-lg.shadow-md.p-6 {
+              position: absolute;
+              left: 0;
+              top: 0;
+              width: 100%;
+              background-color: white !important;
+              color: black !important;
+            }
+            button, .actions-column {
+              display: none !important;
+            }
+          }
+          `}
+        </style>
       </div>
     </div>
   );

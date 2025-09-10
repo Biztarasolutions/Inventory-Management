@@ -93,8 +93,9 @@
   
   /* Ensure filter button text fits without overlapping */
   th button {
-    padding-left: 4px !important;
-    padding-right: 4px !important;
+    padding-left: 3px !important;
+    padding-right: 3px !important;
+    min-width: 90px !important;
   }
   
   /* Alternating row colors for better readability */
@@ -135,7 +136,7 @@
   
   /* Ensure dropdown button text is visible */
   th button span {
-    max-width: 85px !important;
+    max-width: 75px !important;
     overflow: hidden !important;
     text-overflow: ellipsis !important;
     white-space: nowrap !important;

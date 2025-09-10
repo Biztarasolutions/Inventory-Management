@@ -28,12 +28,18 @@ const SearchableDropdown = ({
   }, []);
 
   // Filter options based on search term
-  const filteredOptions = options.filter(option =>
-    option.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredOptions = options.filter(option => {
+    // Handle both string options and object options with label/value
+    if (typeof option === 'string') {
+      return option.toLowerCase().includes(searchTerm.toLowerCase());
+    } else if (option && option.label) {
+      return option.label.toLowerCase().includes(searchTerm.toLowerCase());
+    }
+    return false;
+  });
 
-  const handleSelect = (selectedValue) => {
-    onChange(selectedValue);
+  const handleSelect = (selectedOption) => {
+    onChange(selectedOption);
     setIsOpen(false);
     setSearchTerm('');
   };
@@ -53,7 +59,7 @@ const SearchableDropdown = ({
       >
         <div className="flex justify-between items-center">
           <span className={`${value ? 'text-gray-900' : 'text-gray-500'}`}>
-            {value || placeholder}
+            {value ? (typeof value === 'object' ? value.label : value) : placeholder}
           </span>
           <svg
             className={`w-4 h-4 text-gray-400 transition-transform ${isOpen ? 'rotate-180' : ''}`}
@@ -89,7 +95,7 @@ const SearchableDropdown = ({
                   onClick={() => handleSelect(option)}
                   className="px-3 py-2 text-sm hover:bg-gray-100 cursor-pointer text-gray-900"
                 >
-                  {option}
+                  {typeof option === 'string' ? option : option.label}
                 </div>
               ))
             ) : (
