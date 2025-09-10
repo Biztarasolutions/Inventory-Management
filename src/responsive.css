@@ -1,0 +1,237 @@
+/* Responsive styles for Inventory Management App */
+
+/* Base mobile styles */
+@media (max-width: 768px) {
+  /* Only apply to flex containers in the main layout, not all flex containers */
+  .flex.pt-16 {
+    flex-direction: column;
+  }
+  
+  /* Sidebar adjustments for mobile - convert to bottom navigation */
+  nav.fixed {
+    position: fixed;
+    top: auto !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    width: 100% !important;
+    height: 60px;
+    flex-direction: row !important;
+    justify-content: space-around;
+    align-items: center;
+    z-index: 50;
+    padding: 0 !important;
+    border-top: 2px solid #e5e7eb;
+    border-right: none !important;
+    background-color: white;
+    box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+  }
+  
+  /* Style for navigation links in mobile view */
+  nav.fixed a {
+    display: flex !important;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 6px !important;
+    width: 100%;
+    max-width: 70px;
+    font-size: 0.7rem !important;
+    text-align: center;
+  }
+  
+  /* Hide the collapse button on mobile */
+  nav.fixed button {
+    display: none !important;
+  }
+  
+  /* Main content padding to account for bottom nav */
+  main {
+    padding-bottom: 70px !important;
+    margin-left: 0 !important;
+    width: 100% !important;
+    padding-left: 8px !important;
+    padding-right: 8px !important;
+  }
+  
+  /* Table adjustments */
+  .overflow-x-auto {
+    margin: 0 -8px !important; /* Negative margin to allow full-width scrolling */
+    padding: 0 8px !important;
+  }
+  
+  table {
+    min-width: 650px !important; /* Ensure tables have minimum width */
+  }
+  
+  th, td {
+    padding: 8px 4px !important;
+    font-size: 0.85rem !important;
+  }
+  
+  /* Hide column labels on mobile, show icons instead */
+  .column-header-text {
+    display: none;
+  }
+  
+  .column-header-icon {
+    display: block !important;
+  }
+  
+  /* Grid adjustments */
+  .grid {
+    grid-gap: 8px !important;
+  }
+  
+  .grid-cols-2, .grid-cols-3, .grid-cols-4 {
+    grid-template-columns: 1fr !important;
+  }
+  
+  /* Improve filtering UX on mobile */
+  .filter-dropdown {
+    max-width: 100%;
+    z-index: 40;
+  }
+  
+  /* Adjust form elements for mobile */
+  .form-container input,
+  .form-container select,
+  .form-container button {
+    width: 100%;
+    margin-bottom: 8px;
+  }
+  
+  /* Header adjustments */
+  header {
+    padding: 8px 12px !important;
+  }
+  
+  header span:first-child {
+    font-size: 1.2rem !important;
+  }
+  
+  header span:last-child {
+    font-size: 0.9rem !important;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 150px;
+  }
+  
+  /* Form layout on mobile */
+  form {
+    display: flex;
+    flex-direction: column;
+  }
+  
+  /* Touch-friendly buttons on mobile */
+  button {
+    padding: 8px 16px !important;
+    min-height: 44px;
+    touch-action: manipulation;
+  }
+  
+  /* Make inputs more touch-friendly */
+  input, select {
+    height: 44px;
+    font-size: 16px !important; /* Prevents iOS zoom on focus */
+  }
+  
+  /* Add spacing between items */
+  .space-y-4 {
+    margin-bottom: 12px;
+  }
+}
+
+/* Medium screens (tablets and small laptops) */
+@media (min-width: 769px) and (max-width: 1024px) {
+  /* Adjustments for tablets and small laptops */
+  .grid-cols-3 {
+    grid-template-columns: 1fr 1fr !important;
+  }
+  
+  .grid-cols-4 {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+  
+  .grid-cols-5 {
+    grid-template-columns: repeat(3, 1fr) !important;
+  }
+  
+  /* Sidebar adjustments for tablets */
+  nav.fixed {
+    width: 220px !important; /* Smaller sidebar on tablets */
+  }
+  
+  /* Adjust main content to account for smaller sidebar */
+  main {
+    margin-left: 220px !important;
+  }
+  
+  /* Table adjustments for tablets */
+  table {
+    min-width: 600px !important;
+  }
+}
+
+/* Print styles - hide navigation when printing */
+@media print {
+  nav.fixed {
+    display: none !important;
+  }
+  
+  main {
+    margin-left: 0 !important;
+    padding-left: 0 !important;
+  }
+  
+  header {
+    position: static !important;
+    margin-bottom: 20px !important;
+  }
+  
+  .flex.pt-16 {
+    padding-top: 0 !important;
+  }
+}
+
+/* Utility classes for responsive design */
+.mobile-hidden {
+  display: none !important;
+}
+
+@media (min-width: 769px) {
+  .mobile-hidden {
+    display: block !important;
+  }
+  
+  .desktop-hidden {
+    display: none !important;
+  }
+}
+
+/* Transitions for responsive nav */
+.mobile-nav-transition {
+  transition: all 0.3s ease;
+}
+
+/* Mobile nav view styling */
+@media (max-width: 768px) {
+  .desktop-view {
+    display: none !important;
+  }
+  
+  .mobile-view {
+    display: block !important;
+  }
+}
+
+@media (min-width: 769px) {
+  .desktop-view {
+    display: block !important;
+  }
+  
+  .mobile-view {
+    display: none !important;
+  }
+}

@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, useLocation } from 'react-router-dom';
 import './App.css';
+import './responsive.css';
 import { supabase } from './supabaseClient';
 import FilterDropdown from './components/FilterDropdown';
 import SearchableDropdown from './components/SearchableDropdown';
@@ -161,9 +162,9 @@ function StockInventory() {
         </button>
       </div>
 
-      <div className="bg-white rounded-lg shadow-md">
-        <div>
-          <table className="w-full table-fixed">
+      <div className="bg-white rounded-lg shadow-md my-3">
+        <div className="overflow-x-auto max-w-full">
+          <table className="w-full table-fixed md:min-w-[1200px]">
             <thead className="bg-gray-50 sticky top-0 z-10">
               <tr>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b min-w-[120px] truncate">
@@ -779,9 +780,9 @@ function AddStocks() {
           </button>
         </div>
         
-        <div className="bg-white rounded-lg shadow-md overflow-hidden">
-          <div style={{ maxHeight: 'calc(100vh - 280px)' }}>
-            <table className="w-full table-fixed">
+        <div className="bg-white rounded-lg shadow-md overflow-hidden my-3">
+          <div className="overflow-x-auto max-w-full" style={{ maxHeight: 'calc(100vh - 280px)' }}>
+            <table className="w-full table-fixed md:min-w-[1200px]">
               <thead className="bg-gray-50 sticky top-0 z-30">
                 <tr>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b">
@@ -1041,9 +1042,9 @@ function StockHistory() {
         </button>
       </div>
       
-      <div className="bg-white rounded-lg shadow-md">
-        <div className="overflow-x-auto max-h-screen">
-          <table className="min-w-full table-auto">
+      <div className="bg-white rounded-lg shadow-md my-3">
+        <div className="overflow-x-auto max-w-full" style={{ maxHeight: 'calc(100vh - 280px)' }}>
+          <table className="min-w-full md:min-w-[1200px] table-auto">
             <thead className="bg-gray-50 sticky top-0 z-10">
               <tr>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b">
@@ -1206,55 +1207,59 @@ function AddSupplier() {
   }
 
   return (
-    <div className="p-6 pl-3">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+    <div className="p-6 pl-3 md:pl-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-8">
         {/* Add Supplier (Left) */}
-  <div className="bg-white rounded-lg shadow-md shadow-gray-300 p-6">
+        <div className="bg-white rounded-lg shadow-md shadow-gray-300 p-4 md:p-6">
           <h2 className="text-xl font-bold mb-4 text-black">Add Supplier</h2>
-          <input type="text" className="border px-2 py-1 w-full mb-2" placeholder="Add new supplier" value={newSupplier} onChange={e => setNewSupplier(e.target.value)} />
-          <button onClick={handleAddSupplier} className="px-4 py-2 text-white rounded" style={{ backgroundColor: 'rgb(22, 30, 45)' }}>Add Supplier</button>
+          <input type="text" className="border px-2 py-1 w-full mb-2 rounded" placeholder="Add new supplier" value={newSupplier} onChange={e => setNewSupplier(e.target.value)} />
+          <button onClick={handleAddSupplier} className="px-4 py-2 text-white rounded w-full md:w-auto" style={{ backgroundColor: 'rgb(22, 30, 45)' }}>Add Supplier</button>
           {supplierMsg && <div className="mt-2 text-sm text-black">{supplierMsg}</div>}
           <h3 className="text-lg font-semibold mb-2 text-black mt-6">Supplier List</h3>
-          <table className="w-full border text-black mb-6">
-            <thead className="bg-gray-200">
-              <tr>
-                <th className="border px-2 py-1">Supplier</th>
-                <th className="border px-2 py-1">Date First Added</th>
-              </tr>
-            </thead>
-            <tbody>
-              {suppliers.map((s, idx) => (
-                <tr key={idx}>
-                  <td className="border px-2 py-1">{s.name}</td>
-                  <td className="border px-2 py-1">{s.date}</td>
+          <div className="overflow-x-auto max-w-full">
+            <table className="w-full border text-black mb-6">
+              <thead className="bg-gray-200">
+                <tr>
+                  <th className="border px-2 py-1">Supplier</th>
+                  <th className="border px-2 py-1">Date First Added</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {suppliers.map((s, idx) => (
+                  <tr key={idx}>
+                    <td className="border px-2 py-1">{s.name}</td>
+                    <td className="border px-2 py-1">{s.date}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
         {/* Add Brand (Right) */}
-  <div className="bg-white rounded-lg shadow-md shadow-gray-300 p-6">
+        <div className="bg-white rounded-lg shadow-md shadow-gray-300 p-6">
           <h2 className="text-xl font-bold mb-4 text-black">Add Brand</h2>
-          <input type="text" className="border px-2 py-1 w-full mb-2" placeholder="Add new brand" value={newBrand} onChange={e => setNewBrand(e.target.value)} />
-          <button onClick={handleAddBrand} className="px-4 py-2 text-white rounded" style={{ backgroundColor: 'rgb(22, 30, 45)' }}>Add Brand</button>
+          <input type="text" className="border px-2 py-1 w-full mb-2 rounded" placeholder="Add new brand" value={newBrand} onChange={e => setNewBrand(e.target.value)} />
+          <button onClick={handleAddBrand} className="px-4 py-2 text-white rounded w-full md:w-auto" style={{ backgroundColor: 'rgb(22, 30, 45)' }}>Add Brand</button>
           {brandMsg && <div className="mt-2 text-sm text-black">{brandMsg}</div>}
           <h3 className="text-lg font-semibold mb-2 text-black mt-6">Brand List</h3>
-          <table className="w-full border text-black">
-            <thead className="bg-gray-200">
-              <tr>
-                <th className="border px-2 py-1">Brand</th>
-                <th className="border px-2 py-1">Date First Added</th>
-              </tr>
-            </thead>
-            <tbody>
-              {brands.map((b, idx) => (
-                <tr key={idx}>
-                  <td className="border px-2 py-1">{b.name}</td>
-                  <td className="border px-2 py-1">{b.date}</td>
+          <div className="overflow-x-auto max-w-full">
+            <table className="w-full border text-black">
+              <thead className="bg-gray-200">
+                <tr>
+                  <th className="border px-2 py-1">Brand</th>
+                  <th className="border px-2 py-1">Date First Added</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {brands.map((b, idx) => (
+                  <tr key={idx}>
+                    <td className="border px-2 py-1">{b.name}</td>
+                    <td className="border px-2 py-1">{b.date}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
     </div>
@@ -1337,12 +1342,12 @@ function AppContent({ navOpen, setNavOpen }) {
       <div className="flex pt-16"> {/* Add top padding for fixed header */}
         {/* Left Navigation - Fixed, with partition line */}
         <nav 
-          className={`bg-white pl-5 pr-1 pb-6 pt-2 flex flex-col space-y-4 border-r-2 border-gray-400 relative transition-all duration-300 flex-shrink-0 fixed left-0 top-16 bottom-0 z-40`}
+          className={`bg-white pl-5 pr-1 pb-6 pt-2 flex flex-col space-y-4 border-r-2 border-gray-400 relative transition-all duration-300 flex-shrink-0 fixed left-0 top-16 bottom-0 z-40 mobile-nav-transition`}
           style={{ width: navOpen ? `${sidebarWidth}px` : '64px' }}
         >
           {/* Arrow button at top right of partition line */}
           <button
-            className="absolute top-2 right-[-12px] bg-gray-300 text-black rounded-full p-1 shadow border border-gray-400 z-50"
+            className="absolute top-2 right-[-12px] bg-gray-300 text-black rounded-full p-1 shadow border border-gray-400 z-50 mobile-hidden"
             style={{ width: '24px', height: '24px' }}
             onClick={() => setNavOpen((v) => !v)}
             aria-label={navOpen ? 'Minimize navigation' : 'Expand navigation'}
@@ -1368,13 +1373,21 @@ function AppContent({ navOpen, setNavOpen }) {
                   : `text-xs font-semibold text-center mt-2 ${location.pathname === link.to ? 'text-white rounded px-1 py-1 bg-gray-800' : 'text-black hover:text-gray-700'}`
               }
             >
-              {navOpen ? link.label : <span title={link.label}>{link.icon}</span>}
+              {/* For desktop: show label if nav is open, icon if closed */}
+              <span className="desktop-view">
+                {navOpen ? link.label : <span title={link.label}>{link.icon}</span>}
+              </span>
+              {/* For mobile: always show icon with label underneath */}
+              <span className="mobile-view desktop-hidden">
+                <span className="block text-center">{link.icon}</span>
+                <span className="text-xs block mt-1">{link.label.split(' ')[0]}</span>
+              </span>
             </Link>
           ))}
         </nav>
         {/* Main Content */}
         <main 
-          className="flex-1 min-w-0 transition-all duration-300"
+          className="flex-1 min-w-0 transition-all duration-300 p-3"
         >
           {/* Content */}
           <div>
