@@ -9,7 +9,7 @@
   
   /* Sidebar adjustments for mobile - convert to bottom navigation */
   nav.fixed {
-    position: fixed;
+    position: fixed !important;
     top: auto !important;
     bottom: 0 !important;
     left: 0 !important;
@@ -19,12 +19,13 @@
     flex-direction: row !important;
     justify-content: space-around;
     align-items: center;
-    z-index: 50;
+    z-index: 1000 !important; /* Increased z-index to ensure it's always on top */
     padding: 0 !important;
     border-top: 2px solid #e5e7eb;
     border-right: none !important;
     background-color: white;
     box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+    display: flex !important; /* Ensure it's always displayed */
   }
   
   /* Style for navigation links in mobile view */
@@ -58,11 +59,20 @@
   
   /* Main content padding to account for bottom nav */
   main {
-    padding-bottom: 80px !important; /* Increased to ensure content doesn't overlap with navigation */
+    padding-bottom: 90px !important; /* Increased to ensure content doesn't overlap with navigation */
     margin-left: 0 !important;
     width: 100% !important;
     padding-left: 8px !important;
     padding-right: 8px !important;
+  }
+  
+  /* Additional specific padding for CreateBill component to ensure it doesn't get hidden behind nav */
+  div[class*="CreateBill"],
+  form[class*="CreateBill"],
+  .CreateBill,
+  main:has(div > .Routes > Route[path="/create-bill"]) {
+    padding-bottom: 100px !important;
+    margin-bottom: 20px !important;
   }
   
   /* Table adjustments */
@@ -315,6 +325,15 @@
   
   .mobile-view {
     display: block !important;
+  }
+  
+  /* Special rules for Create Bill page */
+  body.create-bill-page main {
+    padding-bottom: 120px !important;
+  }
+  
+  body.create-bill-page .pb-16 {
+    padding-bottom: 90px !important;
   }
 }
 

@@ -210,7 +210,7 @@ function StockInventory() {
               <tr className="grid-cols-auto">
                 <th className="p-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-b min-w-[110px] w-[10%]">
                   <FilterDropdown
-                    label="Product Code"
+                    label="Product"
                     options={[...new Set(aggregatedData.map(item => item.product_code))]}
                     selectedValues={filters.product_code}
                     onChange={(values) => setFilters(prev => ({ ...prev, product_code: values }))}
@@ -232,7 +232,7 @@ function StockInventory() {
                     onChange={(values) => setFilters(prev => ({ ...prev, supplier_name: values }))}
                   />
                 </th>
-                <th className="p-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-b min-w-[100px] w-[10%]">
+                <th className="p-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-b min-w-[120px]">
                   <FilterDropdown
                     label="Brand"
                     options={[...new Set(aggregatedData.map(item => item.brand_name))]}
@@ -240,10 +240,10 @@ function StockInventory() {
                     onChange={(values) => setFilters(prev => ({ ...prev, brand_name: values }))}
                   />
                 </th>
-                <th className="p-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-b w-[8%] min-w-[80px]">
+                <th className="p-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-b min-w-[80px]">
                   <span className="text-gray-700 font-medium">Image</span>
                 </th>
-                <th className="p-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-b w-[6%] min-w-[60px]">
+                <th className="p-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-b min-w-[80px]">
                   <span className="text-gray-700 font-medium">MRP</span>
                 </th>
                 <th className="p-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-b min-w-[120px] w-[15%]">
@@ -268,9 +268,6 @@ function StockInventory() {
                 </th>
                 <th className="p-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-b w-[10%] min-w-[120px]">
                   <span className="text-gray-700 font-medium">Total Inventory</span>
-                </th>
-                <th className="p-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-b w-[8%] min-w-[100px]">
-                  <span className="text-gray-700 font-medium">Actions</span>
                 </th>
               </tr>
             </thead>
@@ -334,19 +331,13 @@ function StockInventory() {
                           ))}
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-sm font-semibold text-gray-900">{item.total_stock}</td>
-                    <td className="px-4 py-3 text-sm">
-                      <button
-                        onClick={() => setExpandedProduct(expandedProduct === item.product_id ? null : item.product_id)}
-                        className="text-blue-600 hover:text-blue-800 text-sm"
-                      >
-                        {expandedProduct === item.product_id ? 'Hide' : 'View'} Details
-                      </button>
+                    <td className="px-4 py-3 text-sm font-semibold text-gray-900 cursor-pointer" onClick={() => setExpandedProduct(expandedProduct === item.product_id ? null : item.product_id)}>
+                      {item.total_stock}
                     </td>
                   </tr>
                   {expandedProduct === item.product_id && (
                     <tr>
-                      <td colSpan="9" className="px-4 py-4 bg-gray-50">
+                      <td colSpan="8" className="px-4 py-4 bg-gray-50">
                         <div className="text-sm">
                           <h4 className="font-semibold mb-3 text-gray-800">Detailed Size Breakdown:</h4>
                           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
@@ -385,7 +376,7 @@ function StockInventory() {
                 </React.Fragment>
               ))}
               {sortedData.length === 0 && (
-                <tr><td colSpan="9" className="text-center py-4 text-gray-500">No inventory found.</td></tr>
+                <tr><td colSpan="8" className="text-center py-4 text-gray-500">No inventory found.</td></tr>
               )}
             </tbody>
           </table>
@@ -826,7 +817,7 @@ function AddStocks() {
             <table className="w-full table-fixed md:min-w-[1200px] border-collapse">
               <thead className="bg-gray-100 sticky top-0 z-30">
                 <tr>
-                  <th className="p-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-b min-w-[110px] w-[10%]">
+                  <th className="p-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-b min-w-[120px]">
                     <FilterDropdown
                       label="Date"
                       options={[...new Set(enrichedInventoryHistory.map(item => item.formatted_date))]}
@@ -834,7 +825,7 @@ function AddStocks() {
                       onChange={(values) => setHistoryFilters(prev => ({ ...prev, datetime: values }))}
                     />
                   </th>
-                  <th className="p-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-b min-w-[110px] w-[8%]">
+                  <th className="p-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-b min-w-[120px]">
                     <FilterDropdown
                       label="Action"
                       options={[...new Set(enrichedInventoryHistory.map(item => item.action))]}
@@ -842,15 +833,15 @@ function AddStocks() {
                       onChange={(values) => setHistoryFilters(prev => ({ ...prev, action: values }))}
                     />
                   </th>
-                  <th className="p-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-b min-w-[110px] w-[10%]">
+                  <th className="p-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-b min-w-[120px]">
                     <FilterDropdown
-                      label="Product Code"
+                      label="Product"
                       options={[...new Set(enrichedInventoryHistory.map(item => item.product_code))]}
                       selectedValues={historyFilters.product_code}
                       onChange={(values) => setHistoryFilters(prev => ({ ...prev, product_code: values }))}
                     />
                   </th>
-                  <th className="p-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-b min-w-[110px] w-[10%]">
+                  <th className="p-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-b min-w-[120px]">
                     <FilterDropdown
                       label="Style"
                       options={[...new Set(enrichedInventoryHistory.map(item => item.style_code))]}
@@ -858,7 +849,7 @@ function AddStocks() {
                       onChange={(values) => setHistoryFilters(prev => ({ ...prev, style_code: values }))}
                     />
                   </th>
-                  <th className="p-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b">
+                  <th className="p-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-b min-w-[120px]">
                     <FilterDropdown
                       label="Supplier"
                       options={[...new Set(enrichedInventoryHistory.map(item => item.supplier_name))]}
@@ -866,7 +857,7 @@ function AddStocks() {
                       onChange={(values) => setHistoryFilters(prev => ({ ...prev, supplier: values }))}
                     />
                   </th>
-                  <th className="p-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b">
+                  <th className="p-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-b min-w-[120px]">
                     <FilterDropdown
                       label="Brand"
                       options={[...new Set(enrichedInventoryHistory.map(item => item.brand_name))]}
@@ -874,13 +865,13 @@ function AddStocks() {
                       onChange={(values) => setHistoryFilters(prev => ({ ...prev, brand: values }))}
                     />
                   </th>
-                  <th className="p-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b">
+                  <th className="p-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-b">
                     <span className="text-gray-700 font-medium">Image</span>
                   </th>
-                  <th className="p-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b">
+                  <th className="p-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-b">
                     <span className="text-gray-700 font-medium">MRP</span>
                   </th>
-                  <th className="p-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b">
+                  <th className="p-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-b min-w-[120px]">
                     <FilterDropdown
                       label="Size"
                       options={[...new Set(enrichedInventoryHistory.map(item => item.size))].sort((a, b) => {
@@ -896,10 +887,10 @@ function AddStocks() {
                       onChange={(values) => setHistoryFilters(prev => ({ ...prev, size: values }))}
                     />
                   </th>
-                  <th className="p-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b">
+                  <th className="p-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-b">
                     <span className="text-gray-700 font-medium">Quantity</span>
                   </th>
-                  <th className="p-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b">
+                  <th className="p-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-b min-w-[120px]">
                     <FilterDropdown
                       label="Note"
                       options={[...new Set(enrichedInventoryHistory.map(item => item.note || '').filter(note => note !== ''))]}
@@ -1088,7 +1079,7 @@ function StockHistory() {
           <table className="min-w-full md:min-w-[1200px] table-auto border-collapse">
             <thead className="bg-gray-100 sticky top-0 z-10">
               <tr>
-                <th className="p-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-b min-w-[110px] w-[10%]">
+                <th className="p-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-b min-w-[120px]">
                   <FilterDropdown
                     label="Date"
                     options={[...new Set(enrichedData.map(item => item.formatted_date))]}
@@ -1096,15 +1087,15 @@ function StockHistory() {
                     onChange={(values) => setFilters(prev => ({ ...prev, datetime: values }))}
                   />
                 </th>
-                <th className="p-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-b min-w-[110px] w-[10%]">
+                <th className="p-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-b min-w-[120px]">
                   <FilterDropdown
-                    label="Product Code"
+                    label="Product"
                     options={[...new Set(enrichedData.map(item => item.product_code))]}
                     selectedValues={filters.product_code}
                     onChange={(values) => setFilters(prev => ({ ...prev, product_code: values }))}
                   />
                 </th>
-                <th className="p-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-b min-w-[110px] w-[10%]">
+                <th className="p-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-b min-w-[120px]">
                   <FilterDropdown
                     label="Style"
                     options={[...new Set(enrichedData.map(item => item.style_code))]}
@@ -1112,7 +1103,7 @@ function StockHistory() {
                     onChange={(values) => setFilters(prev => ({ ...prev, style_code: values }))}
                   />
                 </th>
-                <th className="p-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b">
+                <th className="p-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-b min-w-[120px]">
                   <FilterDropdown
                     label="Supplier"
                     options={[...new Set(enrichedData.map(item => item.supplier_name))]}
@@ -1120,7 +1111,7 @@ function StockHistory() {
                     onChange={(values) => setFilters(prev => ({ ...prev, supplier: values }))}
                   />
                 </th>
-                <th className="p-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b">
+                <th className="p-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-b min-w-[120px]">
                   <FilterDropdown
                     label="Brand"
                     options={[...new Set(enrichedData.map(item => item.brand_name))]}
@@ -1128,10 +1119,10 @@ function StockHistory() {
                     onChange={(values) => setFilters(prev => ({ ...prev, brand: values }))}
                   />
                 </th>
-                <th className="p-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b">
+                <th className="p-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-b">
                   <span className="text-gray-700 font-medium">MRP</span>
                 </th>
-                <th className="p-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b">
+                <th className="p-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-b min-w-[120px]">
                   <FilterDropdown
                     label="Size"
                     options={[...new Set(enrichedData.map(item => item.size))].sort((a, b) => {
@@ -1147,10 +1138,10 @@ function StockHistory() {
                     onChange={(values) => setFilters(prev => ({ ...prev, size: values }))}
                   />
                 </th>
-                <th className="p-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b">
+                <th className="p-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-b">
                   <span className="text-gray-700 font-medium">Quantity</span>
                 </th>
-                <th className="p-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b">
+                <th className="p-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-b min-w-[120px]">
                   <FilterDropdown
                     label="Note"
                     options={[...new Set(enrichedData.map(item => item.note || '').filter(note => note !== ''))]}
@@ -1437,10 +1428,10 @@ function AppContent({ navOpen, setNavOpen }) {
         </nav>
         {/* Main Content */}
         <main 
-          className="flex-1 min-w-0 transition-all duration-300 p-4 bg-gray-50"
+          className="flex-1 min-w-0 transition-all duration-300 p-4 pb-24 bg-gray-50"
         >
           {/* Content */}
-          <div>
+          <div className="pb-16">
             <Routes>
               <Route path="/create-bill" element={<CreateBill />} />
               <Route path="/add-stocks" element={<AddStocks />} />
@@ -1462,6 +1453,17 @@ function CreateBill() {
     name: '',
     phone: ''
   });
+  
+  // Add bottom padding to make sure content doesn't get hidden under navigation on mobile
+  React.useEffect(() => {
+    // Add class to body when CreateBill is mounted
+    document.body.classList.add('create-bill-page');
+    
+    // Cleanup function to remove class when unmounted
+    return () => {
+      document.body.classList.remove('create-bill-page');
+    };
+  }, []);
   const [billItems, setBillItems] = useState([
     { id: 1, product_code: '', size: '', mrp: 0, quantity: 1, total: 0 }
   ]);
@@ -1722,7 +1724,7 @@ function CreateBill() {
           <table className="w-full border-collapse mb-4">
             <thead>
               <tr className="bg-gray-100">
-                <th className="p-2 text-left font-medium border">Product Code</th>
+                <th className="p-2 text-left font-medium border">Product</th>
                 <th className="p-2 text-left font-medium border">Size</th>
                 <th className="p-2 text-left font-medium border">MRP (₹)</th>
                 <th className="p-2 text-left font-medium border">Quantity</th>
