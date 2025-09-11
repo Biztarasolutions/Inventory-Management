@@ -1450,8 +1450,8 @@ function AppContent({ navOpen, setNavOpen }) {
 function CreateBill() {
   // State for form fields
   const [customer, setCustomer] = useState({
-    name: '',
-    phone: ''
+    phone: '',
+    name: ''
   });
   
   // Add bottom padding to make sure content doesn't get hidden under navigation on mobile
@@ -1465,16 +1465,18 @@ function CreateBill() {
     };
   }, []);
   const [billItems, setBillItems] = useState([
-    { id: 1, product_code: '', size: '', mrp: 0, quantity: 1, total: 0 }
+    { id: 1, product_code: '', size: '', mrp: 0, quantity: 1, total: 0, availableQuantity: 0 }
   ]);
   const [discount, setDiscount] = useState({
     type: 'percentage', // 'percentage' or 'amount'
     value: 0
   });
+  // eslint-disable-next-line no-unused-vars
   const [inventory, setInventory] = useState([]);
   const [products, setProducts] = useState([]);
   const [productOptions, setProductOptions] = useState([]);
   const [sizeOptions, setSizeOptions] = useState({});
+  const [inventoryQuantities, setInventoryQuantities] = useState({});
 
   // Fetch data on component mount
   React.useEffect(() => {
@@ -1497,37 +1499,74 @@ function CreateBill() {
       setInventory(inventoryItems);
       setProducts(productItems);
       
-      // Prepare product options for dropdown - only include products that have inventory
+      // Calculate inventory quantities by product code and size
+      const inventoryByProductAndSize = {};
       const productCodesWithInventory = new Set();
+      const sizeOpts = {};
+      const productDetails = {};
+      
+      // Process inventory data to calculate available quantities
       inventoryItems.forEach(item => {
         const product = productItems.find(p => p.id === item.product_id);
         if (product) {
-          productCodesWithInventory.add(product.product_code);
+          const productCode = product.code.toString();
+          const size = item.size;
+          const quantity = item.quantity || 0;
+          
+          // Initialize product entry if it doesn't exist
+          if (!inventoryByProductAndSize[productCode]) {
+            inventoryByProductAndSize[productCode] = {};
+            productDetails[productCode] = {
+              name: `${productCode} - ${product.style_code || ''}`,
+              mrp: product.mrp || 0
+            };
+          }
+          
+          // Initialize size entry if it doesn't exist
+          if (!inventoryByProductAndSize[productCode][size]) {
+            inventoryByProductAndSize[productCode][size] = 0;
+          }
+          
+          // Add quantity to running total
+          inventoryByProductAndSize[productCode][size] += quantity;
+          
+          // Track product codes with positive inventory
+          if (inventoryByProductAndSize[productCode][size] > 0) {
+            productCodesWithInventory.add(productCode);
+            
+            // Add size to available sizes for this product
+            if (!sizeOpts[productCode]) {
+              sizeOpts[productCode] = [];
+            }
+            if (size && !sizeOpts[productCode].includes(size)) {
+              sizeOpts[productCode].push(size);
+            }
+          }
         }
       });
       
-      const productOpts = Array.from(productCodesWithInventory).map(code => ({ 
-        label: code, 
-        value: code 
-      }));
+      // Filter out sizes with zero or negative inventory
+      Object.keys(sizeOpts).forEach(productCode => {
+        sizeOpts[productCode] = sizeOpts[productCode].filter(size => 
+          inventoryByProductAndSize[productCode][size] > 0
+        );
+      });
+      
+      // Create product options for dropdown with proper labels
+      const productOpts = Array.from(productCodesWithInventory)
+        .filter(code => {
+          // Check if any size has positive inventory
+          const sizes = Object.keys(inventoryByProductAndSize[code] || {});
+          return sizes.some(size => inventoryByProductAndSize[code][size] > 0);
+        })
+        .map(code => ({ 
+          label: productDetails[code].name, 
+          value: code 
+        }));
       
       setProductOptions(productOpts);
-      
-      // Prepare size options for each product code
-      const sizeOpts = {};
-      inventoryData.data?.forEach(item => {
-        const product = productsData.data?.find(p => p.id === item.product_id);
-        if (product) {
-          const productCode = product.product_code;
-          if (!sizeOpts[productCode]) {
-            sizeOpts[productCode] = [];
-          }
-          if (item.size && !sizeOpts[productCode].includes(item.size)) {
-            sizeOpts[productCode].push(item.size);
-          }
-        }
-      });
       setSizeOptions(sizeOpts);
+      setInventoryQuantities(inventoryByProductAndSize);
     } catch (error) {
       console.error('Error fetching data:', error);
     }
@@ -1536,43 +1575,103 @@ function CreateBill() {
   // Handle changes in bill items
   const handleBillItemChange = (index, field, value) => {
     const newBillItems = [...billItems];
-    newBillItems[index][field] = value;
-
+    
     // If product_code changes, update available sizes and reset size
     if (field === 'product_code') {
+      newBillItems[index].product_code = value;
       newBillItems[index].size = '';
       newBillItems[index].mrp = 0;
+      newBillItems[index].quantity = 1;
       newBillItems[index].total = 0;
+      newBillItems[index].availableQuantity = 0;
     }
 
-    // If size changes or product changes, update MRP
-    if (field === 'size' || field === 'product_code') {
+    // If size changes, update MRP and available quantity
+    else if (field === 'size') {
+      newBillItems[index].size = value;
       const product_code = newBillItems[index].product_code;
-      const size = field === 'size' ? value : newBillItems[index].size;
       
-      if (product_code && size) {
+      if (product_code && value) {
         // Find the product and its MRP
-        const product = products.find(p => p.product_code === product_code);
+        const product = products.find(p => p.code.toString() === product_code);
         if (product) {
-          // Find specific inventory item with this product and size to get accurate MRP
-          const inventoryItem = inventory.find(item => 
-            item.product_id === product.id && item.size === size
-          );
+          // Set MRP from product
+          newBillItems[index].mrp = product.mrp || 0;
           
-          // Use product's MRP or inventory item MRP if available
-          const mrpValue = (inventoryItem && inventoryItem.mrp) || product.mrp || 0;
-          newBillItems[index].mrp = mrpValue;
-          newBillItems[index].total = mrpValue * newBillItems[index].quantity;
+          // Calculate how much inventory is available for this size
+          const availableQty = calculateAvailableQuantity(product_code, value, index);
+          newBillItems[index].availableQuantity = availableQty;
+          
+          // Ensure quantity doesn't exceed available inventory
+          if (newBillItems[index].quantity > availableQty) {
+            newBillItems[index].quantity = Math.max(1, availableQty);
+          }
+          
+          // Update total
+          newBillItems[index].total = newBillItems[index].mrp * newBillItems[index].quantity;
         }
       }
     }
 
-    // If quantity changes, update total
-    if (field === 'quantity') {
-      newBillItems[index].total = newBillItems[index].mrp * value;
+    // If quantity changes, ensure it doesn't exceed available inventory and update total
+    else if (field === 'quantity') {
+      const product_code = newBillItems[index].product_code;
+      const size = newBillItems[index].size;
+      
+      if (product_code && size) {
+        // Calculate available quantity considering other bill items
+        const availableQty = calculateAvailableQuantity(product_code, size, index);
+        newBillItems[index].availableQuantity = availableQty; // Update available quantity display
+        
+        // Allow zero for clearing the field
+        if (value === 0 || value === '') {
+          newBillItems[index].quantity = 0;
+        } else {
+          // Limit quantity to available inventory
+          const limitedValue = Math.min(value, availableQty);
+          newBillItems[index].quantity = limitedValue >= 0 ? limitedValue : 0;
+        }
+        
+        newBillItems[index].total = newBillItems[index].mrp * newBillItems[index].quantity;
+      } else {
+        newBillItems[index].quantity = value;
+        newBillItems[index].total = newBillItems[index].mrp * value;
+      }
+      
+      // Update available quantities for any other bill items with the same product and size
+      newBillItems.forEach((item, idx) => {
+        if (idx !== index && item.product_code === product_code && item.size === size) {
+          item.availableQuantity = calculateAvailableQuantity(item.product_code, item.size, idx);
+          if (item.quantity > item.availableQuantity && item.availableQuantity > 0) {
+            item.quantity = item.availableQuantity;
+            item.total = item.mrp * item.quantity;
+          }
+        }
+      });
     }
 
     setBillItems(newBillItems);
+  };
+  
+  // Calculate available quantity for a product and size, accounting for quantities already in bill
+  const calculateAvailableQuantity = (product_code, size, currentIndex) => {
+    if (!product_code || !size || !inventoryQuantities[product_code] || !inventoryQuantities[product_code][size]) {
+      return 0;
+    }
+    
+    // Get total inventory available for this product and size
+    const totalInventory = inventoryQuantities[product_code][size] || 0;
+    
+    // Calculate how much is already allocated in other bill items for the same product and size
+    const allocatedQuantity = billItems.reduce((sum, item, idx) => {
+      if (idx !== currentIndex && item.product_code === product_code && item.size === size) {
+        return sum + item.quantity;
+      }
+      return sum;
+    }, 0);
+    
+    // Return available quantity
+    return Math.max(0, totalInventory - allocatedQuantity);
   };
 
   // Add a new item to the bill
@@ -1629,14 +1728,24 @@ function CreateBill() {
   };
 
   return (
-    <div className="p-6">
+    <div className="p-6 pb-24">
       <div className="bg-white rounded-lg shadow-md p-6">
         <h1 className="text-2xl font-bold mb-6">Create Bill</h1>
         
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-          {/* Customer Information */}
-          <div className="bg-gray-50 p-4 rounded-md">
-            <h2 className="text-lg font-semibold mb-3">Customer Information</h2>
+        {/* Customer Information - Phone first, then Name */}
+        <div className="bg-gray-50 p-4 rounded-md mb-6">
+          <h2 className="text-lg font-semibold mb-3">Customer Information</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="mb-3">
+              <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
+              <input
+                type="text"
+                className="w-full p-2 border rounded-md"
+                value={customer.phone}
+                onChange={(e) => setCustomer({...customer, phone: e.target.value})}
+                placeholder="Enter phone number"
+              />
+            </div>
             <div className="mb-3">
               <label className="block text-sm font-medium text-gray-700 mb-1">Customer Name</label>
               <input
@@ -1647,46 +1756,108 @@ function CreateBill() {
                 placeholder="Enter customer name"
               />
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
-              <input
-                type="text"
-                className="w-full p-2 border rounded-md"
-                value={customer.phone}
-                onChange={(e) => setCustomer({...customer, phone: e.target.value})}
-                placeholder="Enter phone number"
-              />
-            </div>
           </div>
-          
-          {/* Bill Summary */}
-          <div className="bg-gray-50 p-4 rounded-md">
-            <h2 className="text-lg font-semibold mb-3">Bill Summary</h2>
-            <div className="flex justify-between mb-2">
-              <span>Subtotal:</span>
-              <span>₹{calculateSubtotal().toFixed(2)}</span>
-            </div>
-            <div className="flex justify-between mb-2">
-              <span>Discount:</span>
-              <span>₹{calculateDiscountAmount().toFixed(2)}</span>
-            </div>
-            <div className="flex justify-between font-bold text-lg">
-              <span>Total:</span>
-              <span>₹{calculateTotal().toFixed(2)}</span>
-            </div>
-            <button
-              onClick={handlePrintBill}
-              className="mt-4 w-full bg-blue-600 text-white py-2 px-4 rounded hover:bg-blue-700"
-            >
-              Print Bill
-            </button>
+        </div>
+        
+        {/* Bill Items Table */}
+        <div className="mb-6">
+          <h2 className="text-lg font-semibold mb-3">Product Selection</h2>
+          <div className="overflow-x-auto">
           </div>
+        </div>
+        
+        {/* Bill Items Table */}
+        <div className="overflow-x-auto">
+          <table className="w-full border-collapse mb-4">
+            <thead>
+              <tr className="bg-gray-100">
+                <th className="p-2 text-left font-medium border">Product</th>
+                <th className="p-2 text-left font-medium border">Size</th>
+                <th className="p-2 text-left font-medium border">MRP (₹)</th>
+                <th className="p-2 text-left font-medium border">Quantity</th>
+                <th className="p-2 text-left font-medium border">Available</th>
+                <th className="p-2 text-left font-medium border">Total (₹)</th>
+                <th className="p-2 text-left font-medium border">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {billItems.map((item, index) => (
+                <tr key={item.id} className={index % 2 === 0 ? "bg-white" : "bg-gray-50"}>
+                  <td className="p-2 border">
+                    <SearchableDropdown
+                      options={productOptions}
+                      value={item.product_code ? productOptions.find(p => p.value === item.product_code) : null}
+                      onChange={(selected) => {
+                        // Handle both string and object options
+                        const value = typeof selected === 'string' ? selected : (selected ? selected.value : '');
+                        handleBillItemChange(index, 'product_code', value);
+                      }}
+                      placeholder="Select product"
+                      className="w-full"
+                    />
+                  </td>
+                  <td className="p-2 border">
+                    <select
+                      className="w-full p-2 border rounded"
+                      value={item.size}
+                      onChange={(e) => handleBillItemChange(index, 'size', e.target.value)}
+                      disabled={!item.product_code}
+                    >
+                      <option value="">Select Size</option>
+                      {getAvailableSizes(item.product_code).map((size) => (
+                        <option key={size} value={size}>{size}</option>
+                      ))}
+                    </select>
+                  </td>
+                  <td className="p-2 border">
+                    <div className="text-center py-2">₹{item.mrp}</div>
+                  </td>
+                  <td className="p-2 border">
+                    <input
+                      type="number"
+                      min="0"
+                      max={item.availableQuantity || 1}
+                      className="w-full p-2 border rounded no-spinner"
+                      value={item.quantity}
+                      onChange={(e) => {
+                        const value = e.target.value === '' ? 0 : parseInt(e.target.value);
+                        handleBillItemChange(index, 'quantity', value);
+                      }}
+                    />
+                  </td>
+                  <td className="p-2 border text-center text-sm text-gray-600">
+                    {item.availableQuantity > 0 ? item.availableQuantity : '-'}
+                  </td>
+                  <td className="p-2 border">
+                    {item.total.toFixed(2)}
+                  </td>
+                  <td className="p-2 border">
+                    <button
+                      onClick={() => removeBillItem(index)}
+                      className="text-red-500 hover:text-red-700"
+                      disabled={billItems.length === 1}
+                    >
+                      Remove
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        
+        <button
+          onClick={addBillItem}
+          className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
+        >
+          Add Item
+        </button>
         </div>
         
         {/* Discount Options */}
         <div className="mb-6 p-4 border rounded-md bg-gray-50">
           <h2 className="text-lg font-semibold mb-3">Discount</h2>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-4 flex-wrap">
             <div className="flex items-center">
               <input
                 type="radio"
@@ -1719,89 +1890,33 @@ function CreateBill() {
           </div>
         </div>
         
-        {/* Bill Items Table */}
-        <div className="overflow-x-auto">
-          <table className="w-full border-collapse mb-4">
-            <thead>
-              <tr className="bg-gray-100">
-                <th className="p-2 text-left font-medium border">Product</th>
-                <th className="p-2 text-left font-medium border">Size</th>
-                <th className="p-2 text-left font-medium border">MRP (₹)</th>
-                <th className="p-2 text-left font-medium border">Quantity</th>
-                <th className="p-2 text-left font-medium border">Total (₹)</th>
-                <th className="p-2 text-left font-medium border">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {billItems.map((item, index) => (
-                <tr key={item.id} className={index % 2 === 0 ? "bg-white" : "bg-gray-50"}>
-                  <td className="p-2 border">
-                    <SearchableDropdown
-                      options={productOptions}
-                      value={item.product_code ? { label: item.product_code, value: item.product_code } : null}
-                      onChange={(selected) => {
-                        // Handle both string and object options
-                        const value = typeof selected === 'string' ? selected : (selected ? selected.value : '');
-                        handleBillItemChange(index, 'product_code', value);
-                      }}
-                      placeholder="Select product"
-                      className="w-full"
-                    />
-                  </td>
-                  <td className="p-2 border">
-                    <select
-                      className="w-full p-2 border rounded"
-                      value={item.size}
-                      onChange={(e) => handleBillItemChange(index, 'size', e.target.value)}
-                      disabled={!item.product_code}
-                    >
-                      <option value="">Select Size</option>
-                      {getAvailableSizes(item.product_code).map((size) => (
-                        <option key={size} value={size}>{size}</option>
-                      ))}
-                    </select>
-                  </td>
-                  <td className="p-2 border">
-                    <input
-                      type="number"
-                      className="w-full p-2 border rounded"
-                      value={item.mrp}
-                      readOnly
-                    />
-                  </td>
-                  <td className="p-2 border">
-                    <input
-                      type="number"
-                      min="1"
-                      className="w-full p-2 border rounded"
-                      value={item.quantity}
-                      onChange={(e) => handleBillItemChange(index, 'quantity', parseInt(e.target.value) || 1)}
-                    />
-                  </td>
-                  <td className="p-2 border">
-                    {item.total.toFixed(2)}
-                  </td>
-                  <td className="p-2 border">
-                    <button
-                      onClick={() => removeBillItem(index)}
-                      className="text-red-500 hover:text-red-700"
-                      disabled={billItems.length === 1}
-                    >
-                      Remove
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        
-        <button
-          onClick={addBillItem}
-          className="bg-gray-200 text-black py-2 px-4 rounded hover:bg-gray-300 mb-4"
-        >
-          + Add Item
-        </button>
+        {/* Bill Summary */}
+        <div className="bg-gray-50 p-4 rounded-md mb-6">
+          <h2 className="text-lg font-semibold mb-3">Bill Summary</h2>
+          <div className="flex justify-between mb-2">
+            <span>Subtotal:</span>
+            <span>₹{calculateSubtotal().toFixed(2)}</span>
+          </div>
+          <div className="flex justify-between mb-2">
+            <span>Discount ({
+              discount.type === 'percentage' 
+                ? `${discount.value}%` 
+                : calculateSubtotal() > 0
+                  ? `${((discount.value / calculateSubtotal()) * 100).toFixed(2)}%`
+                  : '0%'
+            }):</span>
+            <span>₹{calculateDiscountAmount().toFixed(2)}</span>
+          </div>
+          <div className="flex justify-between font-bold text-lg">
+            <span>Total:</span>
+            <span>₹{calculateTotal().toFixed(2)}</span>
+          </div>
+          <button
+            onClick={handlePrintBill}
+            className="mt-4 w-full bg-blue-600 text-white py-2 px-4 rounded hover:bg-blue-700"
+          >
+            Print Bill
+          </button>
         
         {/* Print-specific styles */}
         <style type="text/css" media="print">
