@@ -21,23 +21,39 @@ const SearchableDropdown = ({
       }
     };
     
-    // Force rerender of dropdown position on window resize
-    const handleResize = () => {
-      if (isOpen) {
-        // Force rerender by toggling state
+    // Force rerender of dropdown position on window resize or scroll
+    const handlePositionChange = () => {
+      if (isOpen && dropdownRef.current) {
+        // Force redraw by toggling state
         setIsOpen(false);
         setTimeout(() => setIsOpen(true), 10);
       }
     };
 
     document.addEventListener('mousedown', handleClickOutside);
-    window.addEventListener('resize', handleResize);
-    window.addEventListener('scroll', handleResize, true);
+    window.addEventListener('resize', handlePositionChange);
+    window.addEventListener('scroll', handlePositionChange, true);
+    
+    // Initial position check
+    if (isOpen) {
+      setTimeout(() => {
+        if (dropdownRef.current) {
+          // Make sure dropdown is visible and positioned correctly
+          const rect = dropdownRef.current.getBoundingClientRect();
+          if (rect.bottom > window.innerHeight) {
+            window.scrollTo({
+              top: window.scrollY + (rect.bottom - window.innerHeight) + 10,
+              behavior: 'smooth'
+            });
+          }
+        }
+      }, 100);
+    }
     
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
-      window.removeEventListener('resize', handleResize);
-      window.removeEventListener('scroll', handleResize, true);
+      window.removeEventListener('resize', handlePositionChange);
+      window.removeEventListener('scroll', handlePositionChange, true);
     };
   }, [isOpen]);
 
@@ -88,10 +104,12 @@ const SearchableDropdown = ({
 
       {isOpen && (
         <div className="fixed z-[9999] w-max min-w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto" style={{
-          left: dropdownRef.current ? dropdownRef.current.getBoundingClientRect().left + 'px' : '0px',
+          position: 'fixed',
+          left: dropdownRef.current ? Math.max(5, dropdownRef.current.getBoundingClientRect().left) + 'px' : '5px',
           top: dropdownRef.current ? dropdownRef.current.getBoundingClientRect().bottom + window.scrollY + 'px' : '0px',
           minWidth: dropdownRef.current ? dropdownRef.current.offsetWidth + 'px' : '100%',
-          maxWidth: '90vw'
+          width: 'auto',
+          maxWidth: `${Math.min(90, window.innerWidth - 10)}vw`
         }}>
           {/* Search Input */}
           <div className="p-2 border-b border-gray-200">
@@ -114,7 +132,12 @@ const SearchableDropdown = ({
                   onClick={() => handleSelect(option)}
                   className="px-3 py-2 text-sm hover:bg-gray-100 cursor-pointer text-gray-900 whitespace-nowrap"
                 >
-                  {typeof option === 'string' ? option : option.value}
+                  {typeof option === 'string' ? option : (
+                    <div className="flex flex-col">
+                      <span className="font-medium">{option.value}</span>
+                      <span className="text-xs text-gray-500">{option.label}</span>
+                    </div>
+                  )}
                 </div>
               ))
             ) : (
