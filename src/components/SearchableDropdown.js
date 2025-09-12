@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { useFloating, flip, shift, offset } from '@floating-ui/react-dom';
+import { useFloating, shift, offset } from '@floating-ui/react-dom';
 
 const SearchableDropdown = ({ 
   value, 
