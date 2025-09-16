@@ -1451,8 +1451,26 @@ function CreateBill() {
   // State for form fields
   const [customer, setCustomer] = useState({
     phone: '',
-    name: ''
+    name: '',
+    isExisting: false
   });
+
+  // Check for existing customer when phone number is entered
+  const checkExistingCustomer = async (phone) => {
+    if (phone.length === 10) {
+      const { data, error } = await supabase
+        .from('customers')
+        .select('name')
+        .eq('phone', phone)
+        .single();
+      
+      if (data && !error) {
+        setCustomer(prev => ({ ...prev, name: data.name, isExisting: true }));
+      } else {
+        setCustomer(prev => ({ ...prev, name: '', isExisting: false }));
+      }
+    }
+  };
   
   // Add bottom padding to make sure content doesn't get hidden under navigation on mobile
   React.useEffect(() => {
@@ -1560,7 +1578,7 @@ function CreateBill() {
           return sizes.some(size => inventoryByProductAndSize[code][size] > 0);
         })
         .map(code => ({ 
-          label: productDetails[code].name, 
+          label: code, // Only show product code
           value: code 
         }));
       
@@ -1740,19 +1758,26 @@ function CreateBill() {
               <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
               <input
                 type="text"
+                pattern="[0-9]*"
+                maxLength={10}
                 className="w-full p-2 border rounded-md"
                 value={customer.phone}
-                onChange={(e) => setCustomer({...customer, phone: e.target.value})}
-                placeholder="Enter phone number"
+                onChange={(e) => {
+                  const value = e.target.value.replace(/\D/g, '');
+                  setCustomer(prev => ({...prev, phone: value}));
+                  checkExistingCustomer(value);
+                }}
+                placeholder="Enter 10-digit phone number"
               />
             </div>
             <div className="mb-3">
               <label className="block text-sm font-medium text-gray-700 mb-1">Customer Name</label>
               <input
                 type="text"
-                className="w-full p-2 border rounded-md"
+                className={`w-full p-2 border rounded-md ${customer.isExisting ? 'bg-gray-100' : ''}`}
                 value={customer.name}
-                onChange={(e) => setCustomer({...customer, name: e.target.value})}
+                onChange={(e) => !customer.isExisting && setCustomer({...customer, name: e.target.value})}
+                disabled={customer.isExisting}
                 placeholder="Enter customer name"
               />
             </div>
@@ -1798,8 +1823,8 @@ function CreateBill() {
                   </td>
                     <td className="p-2 border">
                       <SearchableDropdown
-                        options={getAvailableSizes(item.product_code).map(size => ({ label: size, value: size }))}
-                        value={item.size ? { label: item.size, value: item.size } : null}
+                        options={getAvailableSizes(item.product_code).map(size => ({ label: size.split(' ')[0], value: size.split(' ')[0] }))}
+                        value={item.size ? { label: item.size.split(' ')[0], value: item.size.split(' ')[0] } : null}
                         onChange={(selected) => {
                           const value = typeof selected === 'string' ? selected : (selected ? selected.value : '');
                           handleBillItemChange(index, 'size', value);
