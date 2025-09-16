@@ -1796,19 +1796,19 @@ function CreateBill() {
                       className="w-full"
                     />
                   </td>
-                  <td className="p-2 border">
-                    <select
-                      className="w-full p-2 border rounded"
-                      value={item.size}
-                      onChange={(e) => handleBillItemChange(index, 'size', e.target.value)}
-                      disabled={!item.product_code}
-                    >
-                      <option value="">Select Size</option>
-                      {getAvailableSizes(item.product_code).map((size) => (
-                        <option key={size} value={size}>{size}</option>
-                      ))}
-                    </select>
-                  </td>
+                    <td className="p-2 border">
+                      <SearchableDropdown
+                        options={getAvailableSizes(item.product_code).map(size => ({ label: size, value: size }))}
+                        value={item.size ? { label: item.size, value: item.size } : null}
+                        onChange={(selected) => {
+                          const value = typeof selected === 'string' ? selected : (selected ? selected.value : '');
+                          handleBillItemChange(index, 'size', value);
+                        }}
+                        placeholder="Select size"
+                        className="w-full"
+                        disabled={!item.product_code}
+                      />
+                    </td>
                   <td className="p-2 border">
                     <div className="text-center py-2">₹{item.mrp}</div>
                   </td>
