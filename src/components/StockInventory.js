@@ -7,7 +7,6 @@ export function StockInventory() {
   const [products, setProducts] = useState([]);
   const [suppliers, setSuppliers] = useState([]);
   const [brands, setBrands] = useState([]);
-  const [expandedProduct, setExpandedProduct] = useState(null);
   
   // Filter states for each column
   const [filters, setFilters] = useState({

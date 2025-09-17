@@ -29,7 +29,6 @@ export function CreateBill() {
   const [inventoryQuantities, setInventoryQuantities] = useState({});
 
   useEffect(() => {
-    let mounted = true;
     const fetchAndSetData = async () => {
       try {
         await fetchData();
@@ -38,9 +37,6 @@ export function CreateBill() {
       }
     };
     fetchAndSetData();
-    return () => {
-      mounted = false;
-    };
   }, []);
 
   const fetchData = async () => {
