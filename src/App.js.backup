@@ -1,0 +1,67 @@
+import React, { useState } from 'react';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import './App.css';
+import './responsive.css';
+import { Navigation } from './components/Navigation';
+import { Sales } from './components/Sales';
+import { StockInventory } from './components/StockInventory';
+import { AddStocks } from './components/AddStocks';
+import { StockHistory } from './components/StockHistory';
+import { AddSupplier } from './components/AddSupplier';
+
+// Export constants and utility functions
+export const SIZES = ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL'];
+
+export function fileToBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = () => {
+      const base64 = reader.result.split(',')[1];
+      resolve(base64);
+    };
+    reader.onerror = error => reject(error);
+  });
+}
+
+// Helper function to format datetime to India time for display
+export function formatDateTime(dateString) {
+  try {
+    const date = new Date(dateString);
+    // Format to India timezone for display
+    const options = {
+      timeZone: 'Asia/Kolkata',
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true
+    };
+    return date.toLocaleString('en-IN', options);
+  } catch (error) {
+    return dateString; // Return original if parsing fails
+  }
+}
+
+function App() {
+  return (
+    <Router>
+      <div className="min-h-screen bg-gray-100">
+        <Navigation />
+        <main className="md:pl-64 pt-4 pb-20 md:pb-6 transition-all duration-300">
+          <Routes>
+            <Route path="/" element={<Sales />} />
+            <Route path="/sales" element={<Sales />} />
+            <Route path="/stocks/add" element={<AddStocks />} />
+            <Route path="/stocks/inventory" element={<StockInventory />} />
+            <Route path="/stocks/history" element={<StockHistory />} />
+            <Route path="/stocks/supplier" element={<AddSupplier />} />
+          </Routes>
+        </main>
+      </div>
+    </Router>
+  );
+}
+
+export default App;

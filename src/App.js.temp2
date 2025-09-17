@@ -1,0 +1,24 @@
+const SIZES = ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL'];
+
+// Main App component
+function App() {
+  return (
+    <Router>
+      <div className="min-h-screen bg-white">
+        <Navigation />
+        <main className="pb-24 md:pb-6 md:ml-64">
+          <Routes>
+            <Route path="/" element={<CreateBill />} />
+            <Route path="/sales" element={<Sales />} />
+            <Route path="/stocks/add" element={<AddStocks />} />
+            <Route path="/stocks/inventory" element={<StockInventory />} />
+            <Route path="/stocks/history" element={<StockHistory />} />
+            <Route path="/stocks/supplier" element={<AddSupplier />} />
+          </Routes>
+        </main>
+      </div>
+    </Router>
+  );
+}
+
+export default App;
