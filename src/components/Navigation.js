@@ -57,7 +57,7 @@ export function Navigation({ navOpen, setNavOpen, currentPage }) {
 
       {/* Left Navigation - Fixed */}
       <nav 
-        className={`bg-white pl-5 pr-1 pb-6 pt-2 flex flex-col space-y-4 relative transition-all duration-300 flex-shrink-0 fixed left-0 top-16 bottom-0 z-40 mobile-nav-transition`}
+        className={`bg-white pl-5 pr-1 pb-6 pt-4 flex flex-col space-y-4 relative transition-all duration-300 flex-shrink-0 fixed left-0 top-16 bottom-0 z-40 mobile-nav-transition`}
         style={{ 
           width: navOpen ? `${sidebarWidth}px` : '64px',
           boxShadow: '2px 0 10px rgba(0, 0, 0, 0.05)'

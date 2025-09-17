@@ -68,7 +68,7 @@ function AppContent({ navOpen, setNavOpen }) {
   return (
     <div className="flex h-screen bg-gray-100">
       <Navigation navOpen={navOpen} setNavOpen={setNavOpen} currentPage={currentPage} navLinks={navLinks} />
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex-1 flex flex-col overflow-hidden mt-16">
         <main className="flex-1 overflow-y-auto bg-gray-100">
           <Routes>
             <Route path="/" element={<CreateBill />} />
