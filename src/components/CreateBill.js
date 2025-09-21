@@ -10,7 +10,17 @@ export function CreateBill() {
   });
 
   const [billItems, setBillItems] = useState([
-    { id: 1, product_code: '', size: '', mrp: 0, quantity: 1, total: 0, availableQuantity: 0 }
+    { 
+      id: 1, 
+      product_code: '', 
+      size: '', 
+      mrp: 0, 
+      quantity: 1,
+      discount: { type: 'percentage', value: 0 },
+      sellingPrice: 0,
+      total: 0,
+      availableQuantity: 0 
+    }
   ]);
   const [discount, setDiscount] = useState({
     type: 'percentage',
@@ -154,6 +164,14 @@ export function CreateBill() {
   const handleBillItemChange = (index, field, value) => {
     const newBillItems = [...billItems];
     
+    const updateItemPrices = (item) => {
+      // Calculate selling price based on MRP and discount
+      const sellingPrice = calculateSellingPrice(item);
+      item.sellingPrice = sellingPrice;
+      // Total is selling price multiplied by quantity
+      item.total = sellingPrice * item.quantity;
+    };
+    
     if (field === 'product_code') {
       newBillItems[index].product_code = value;
       newBillItems[index].size = '';
@@ -175,9 +193,18 @@ export function CreateBill() {
           if (newBillItems[index].quantity > availableQty) {
             newBillItems[index].quantity = Math.max(1, availableQty);
           }
-          newBillItems[index].total = newBillItems[index].mrp * newBillItems[index].quantity;
+          const sellingPrice = calculateSellingPrice(newBillItems[index]);
+          newBillItems[index].sellingPrice = sellingPrice;
+          newBillItems[index].total = sellingPrice * newBillItems[index].quantity;
         }
       }
+    }
+    else if (field === 'discount') {
+      // Update discount while preserving existing quantity
+      newBillItems[index].discount = value;
+      const sellingPrice = calculateSellingPrice(newBillItems[index]);
+      newBillItems[index].sellingPrice = sellingPrice;
+      newBillItems[index].total = sellingPrice * newBillItems[index].quantity;
     }
     else if (field === 'quantity') {
       const product_code = newBillItems[index].product_code;
@@ -194,20 +221,29 @@ export function CreateBill() {
           newBillItems[index].quantity = limitedValue >= 0 ? limitedValue : 0;
         }
         
-        newBillItems[index].total = newBillItems[index].mrp * newBillItems[index].quantity;
+        // Calculate total with existing discount
+        const sellingPrice = calculateSellingPrice(newBillItems[index]);
+        newBillItems[index].sellingPrice = sellingPrice;
+        newBillItems[index].total = sellingPrice * newBillItems[index].quantity;
         
         newBillItems.forEach((item, idx) => {
           if (idx !== index && item.product_code === product_code && item.size === size) {
             item.availableQuantity = calculateAvailableQuantity(item.product_code, item.size, idx);
             if (item.quantity > item.availableQuantity && item.availableQuantity > 0) {
               item.quantity = item.availableQuantity;
-              item.total = item.mrp * item.quantity;
+              // Recalculate total with existing discount
+              const itemSellingPrice = calculateSellingPrice(item);
+              item.sellingPrice = itemSellingPrice;
+              item.total = itemSellingPrice * item.quantity;
             }
           }
         });
       } else {
         newBillItems[index].quantity = value;
-        newBillItems[index].total = newBillItems[index].mrp * value;
+        // Calculate total with existing discount
+        const sellingPrice = calculateSellingPrice(newBillItems[index]);
+        newBillItems[index].sellingPrice = sellingPrice;
+        newBillItems[index].total = sellingPrice * value;
       }
     }
 
@@ -216,6 +252,19 @@ export function CreateBill() {
 
   const getAvailableSizes = (productCode) => {
     return sizeOptions[productCode] || [];
+  };
+
+  const calculateSellingPrice = (item) => {
+    if (!item.discount || !item.discount.value) return item.mrp;
+    
+    if (item.discount.type === 'percentage') {
+      // Calculate per-unit price after percentage discount
+      const percentage = Math.min(item.discount.value, 100);
+      return item.mrp - (item.mrp * percentage / 100);
+    } else {
+      // Fixed amount discount is applied directly to MRP
+      return Math.max(0, item.mrp - item.discount.value);
+    }
   };
 
   const calculateSubtotal = () => {
@@ -249,6 +298,7 @@ export function CreateBill() {
         size: '', 
         mrp: 0, 
         quantity: 1, 
+        discount: { type: 'percentage', value: 0 },
         total: 0,
         availableQuantity: 0
       }
@@ -256,11 +306,32 @@ export function CreateBill() {
   };
 
   const removeBillItem = (index) => {
-    if (billItems.length > 1) {
-      const newBillItems = [...billItems];
-      newBillItems.splice(index, 1);
-      setBillItems(newBillItems);
-    }
+    setBillItems(prevItems => {
+      const newItems = [...prevItems];
+      // Remove the item at the specified index
+      newItems.splice(index, 1);
+      
+      // If this was the last item, add a new empty item
+      if (newItems.length === 0) {
+        newItems.push({
+          id: 1,
+          product_code: '',
+          size: '',
+          mrp: 0,
+          quantity: 1,
+          discount: { type: 'percentage', value: 0 },
+          sellingPrice: 0,
+          total: 0,
+          availableQuantity: 0
+        });
+      } else {
+        // Update ids to be sequential
+        newItems.forEach((item, idx) => {
+          item.id = idx + 1;
+        });
+      }
+      return newItems;
+    });
   };
 
   const handlePrintBill = async () => {
@@ -375,19 +446,22 @@ export function CreateBill() {
             <table className="w-full border-collapse">
               <thead>
                 <tr className="bg-gray-100">
-                  <th className="p-2 text-left font-medium border">Product</th>
-                  <th className="p-2 text-left font-medium border">Size</th>
-                  <th className="p-2 text-left font-medium border">MRP (₹)</th>
-                  <th className="p-2 text-left font-medium border">Quantity</th>
-                  <th className="p-2 text-left font-medium border">Available</th>
-                  <th className="p-2 text-left font-medium border">Total (₹)</th>
-                  <th className="p-2 text-left font-medium border">Actions</th>
+                  <th className="p-2 text-center font-medium border">Product</th>
+                  <th className="p-2 text-center font-medium border">Size</th>
+                  <th className="p-2 text-center font-medium border">MRP (₹)</th>
+                  <th className="p-2 text-center font-medium border">Quantity</th>
+                  <th className="p-2 text-center font-medium border">Discount Type</th>
+                  <th className="p-2 text-center font-medium border">Discount</th>
+                  <th className="p-2 text-center font-medium border">Available</th>
+                  <th className="p-2 text-center font-medium border">Selling Price (₹)</th>
+                  <th className="p-2 text-center font-medium border">Total (₹)</th>
+                  <th className="p-2 text-center font-medium border">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {billItems.map((item, index) => (
                   <tr key={item.id} className={index % 2 === 0 ? "bg-white" : "bg-gray-50"}>
-                    <td className="p-2 border">
+                    <td className="p-2 border text-center">
                       <SearchableDropdown
                         value={item.product_code ? productOptions.find(p => p.value === item.product_code) : null}
                         onChange={(selected) => {
@@ -396,10 +470,10 @@ export function CreateBill() {
                         }}
                         options={productOptions}
                         placeholder="Select product"
-                        className="w-full"
+                        className="w-full text-left"
                       />
                     </td>
-                    <td className="p-2 border">
+                    <td className="p-2 border text-center">
                       <SearchableDropdown
                         value={item.size ? { label: item.size.split(' ')[0], value: item.size.split(' ')[0] } : null}
                         onChange={(selected) => {
@@ -411,37 +485,70 @@ export function CreateBill() {
                           value: size 
                         }))}
                         placeholder="Select size"
-                        className="w-full"
+                        className="w-full text-left"
                         disabled={!item.product_code}
                       />
                     </td>
-                    <td className="p-2 border">
+                    <td className="p-2 border text-center">
                       <div className="text-center py-2">₹{item.mrp}</div>
                     </td>
-                    <td className="p-2 border">
+                    <td className="p-2 border text-center">
                       <input
                         type="number"
                         min="0"
                         max={item.availableQuantity || 1}
-                        className="w-full p-2 border rounded no-spinner"
+                        className="w-full p-2 border rounded no-spinner text-center"
                         value={item.quantity}
+                        onChange={(e) => handleBillItemChange(index, 'quantity', parseInt(e.target.value) || 0)}
+                      />
+                    </td>
+                    <td className="p-2 border text-center">
+                      <select
+                        className="w-full p-2 border rounded text-center"
+                        value={item.discount.type}
+                        onChange={(e) => handleBillItemChange(index, 'discount', { 
+                          ...item.discount, 
+                          type: e.target.value,
+                          value: e.target.value === 'percentage' ? Math.min(item.discount.value, 100) : Math.min(item.discount.value, item.mrp)
+                        })}
+                      >
+                        <option value="percentage">%</option>
+                        <option value="fixed">₹</option>
+                      </select>
+                    </td>
+                    <td className="p-2 border text-center">
+                      <input
+                        type="number"
+                        min="0"
+                        max={item.discount.type === 'percentage' ? 100 : item.mrp}
+                        step={item.discount.type === 'percentage' ? 1 : 0.01}
+                        className="w-full p-2 border rounded no-spinner text-center"
+                        value={item.discount.value}
                         onChange={(e) => {
-                          const value = e.target.value === '' ? 0 : parseInt(e.target.value);
-                          handleBillItemChange(index, 'quantity', value);
+                          const newValue = parseFloat(e.target.value) || 0;
+                          const maxValue = item.discount.type === 'percentage' ? 100 : item.mrp;
+                          handleBillItemChange(index, 'discount', { 
+                            ...item.discount, 
+                            value: Math.min(newValue, maxValue)
+                          });
                         }}
                       />
                     </td>
                     <td className="p-2 border text-center text-sm text-gray-600">
                       {item.availableQuantity > 0 ? item.availableQuantity : '-'}
                     </td>
-                    <td className="p-2 border">
-                      {item.total.toFixed(2)}
+                    <td className="p-2 border text-center">
+                      ₹{(item.total / item.quantity).toFixed(2)}
                     </td>
-                    <td className="p-2 border">
+                    <td className="p-2 border text-center">
+                      ₹{item.total.toFixed(2)}
+                    </td>
+                    <td className="p-2 border text-center">
                       <button
                         onClick={() => removeBillItem(index)}
-                        className="text-red-500 hover:text-red-700"
-                        disabled={billItems.length === 1}
+                        className="rounded px-3 py-1.5 text-red-500 hover:text-white hover:bg-red-500 transition-colors duration-200"
+                        title="Remove this item"
+                        type="button"
                       >
                         Remove
                       </button>
