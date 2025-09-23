@@ -450,13 +450,10 @@ const CreateBill = () => {
 
       // First, get current inventory for all products being sold
       const promises = billItems.map(async (item) => {
-        const product = products.find(p => p.code.toString() === item.product_code);
-        if (!product) return null;
-
         const { data: currentInventory, error: invError } = await supabase
           .from('inventory')
           .select('id, quantity')
-          .eq('product_id', product.id)
+          .eq('product_id', item.product_code)
           .eq('size', item.size)
           .gt('quantity', 0)  // Only get entries with positive quantity
           .order('date', { ascending: true });  // Get oldest entries first (FIFO)
@@ -466,7 +463,7 @@ const CreateBill = () => {
           throw invError;
         }
 
-        return { item, product, currentInventory: currentInventory || [] };
+        return { item, currentInventory: currentInventory || [] };
       });
 
       const inventoryData = await Promise.all(promises);
