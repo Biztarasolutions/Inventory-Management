@@ -5,7 +5,7 @@ import { useFloating, shift, offset } from '@floating-ui/react-dom';
 const SearchableDropdown = ({ 
   value, 
   onChange, 
-  options, 
+  options = [], 
   placeholder = "Select...", 
   className = "" 
 }) => {

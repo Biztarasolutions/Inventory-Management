@@ -480,7 +480,7 @@ export function AddStocks() {
                   <th className="p-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-b min-w-[120px]">
                     <FilterDropdown
                       label="Action"
-                      options={[...new Set(enrichedInventoryHistory.map(item => item.action))]}
+                      options={['Added', 'Removed', 'Sold']}
                       selectedValues={historyFilters.action}
                       onChange={(values) => setHistoryFilters(prev => ({ ...prev, action: values }))}
                     />
@@ -488,7 +488,7 @@ export function AddStocks() {
                   <th className="p-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-b min-w-[120px]">
                     <FilterDropdown
                       label="Product"
-                      options={[...new Set(enrichedInventoryHistory.map(item => item.product_code))]}
+                      options={[...new Set(enrichedInventoryHistory.map(item => item.product_code).filter(Boolean))]}
                       selectedValues={historyFilters.product_code}
                       onChange={(values) => setHistoryFilters(prev => ({ ...prev, product_code: values }))}
                     />
@@ -496,7 +496,7 @@ export function AddStocks() {
                   <th className="p-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-b min-w-[120px]">
                     <FilterDropdown
                       label="Style"
-                      options={[...new Set(enrichedInventoryHistory.map(item => item.style_code))]}
+                      options={[...new Set(enrichedInventoryHistory.map(item => item.style_code).filter(Boolean))]}
                       selectedValues={historyFilters.style_code}
                       onChange={(values) => setHistoryFilters(prev => ({ ...prev, style_code: values }))}
                     />
@@ -504,7 +504,7 @@ export function AddStocks() {
                   <th className="p-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-b min-w-[120px]">
                     <FilterDropdown
                       label="Supplier"
-                      options={[...new Set(enrichedInventoryHistory.map(item => item.supplier_name))]}
+                      options={[...new Set(enrichedInventoryHistory.map(item => item.supplier_name).filter(Boolean))]}
                       selectedValues={historyFilters.supplier}
                       onChange={(values) => setHistoryFilters(prev => ({ ...prev, supplier: values }))}
                     />
@@ -512,7 +512,7 @@ export function AddStocks() {
                   <th className="p-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-b min-w-[120px]">
                     <FilterDropdown
                       label="Brand"
-                      options={[...new Set(enrichedInventoryHistory.map(item => item.brand_name))]}
+                      options={[...new Set(enrichedInventoryHistory.map(item => item.brand_name).filter(Boolean))]}
                       selectedValues={historyFilters.brand}
                       onChange={(values) => setHistoryFilters(prev => ({ ...prev, brand: values }))}
                     />
@@ -558,9 +558,13 @@ export function AddStocks() {
                     <td className="px-4 py-3 text-sm text-gray-900">{entry.formatted_date}</td>
                     <td className="px-4 py-3 text-sm text-gray-900">
                       <span className={`px-2 py-1 rounded-full text-xs ${
-                        entry.action === 'added' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                        entry.action === 'sold'
+                          ? 'bg-blue-100 text-blue-800'
+                          : entry.action === 'added' || entry.quantity > 0
+                            ? 'bg-green-100 text-green-800'
+                            : 'bg-red-100 text-red-800'
                       }`}>
-                        {entry.action}
+                        {entry.action || (entry.quantity > 0 ? 'Added' : 'Removed')}
                       </span>
                     </td>
                     <td className="px-4 py-3 text-sm text-gray-900">{entry.product_code}</td>

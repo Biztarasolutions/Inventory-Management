@@ -9,9 +9,10 @@ export function StockHistory() {
   const [suppliers, setSuppliers] = useState([]);
   const [brands, setBrands] = useState([]);
   
-  // Filter states
+  // Filter states with proper initialization
   const [filters, setFilters] = useState({
     datetime: [],
+    action: [],
     product_code: [],
     style_code: [],
     supplier: [],
@@ -65,8 +66,10 @@ export function StockHistory() {
 
   // Apply filters
   const filteredData = enrichedData.filter(item => {
+    const action = item.action || (item.quantity > 0 ? 'Added' : 'Removed');
     return (
       (filters.datetime.length === 0 || filters.datetime.includes(item.formatted_date)) &&
+      (filters.action.length === 0 || filters.action.includes(action)) &&
       (filters.product_code.length === 0 || filters.product_code.includes(item.product_code)) &&
       (filters.style_code.length === 0 || filters.style_code.includes(item.style_code)) &&
       (filters.supplier.length === 0 || filters.supplier.includes(item.supplier_name)) &&
@@ -103,6 +106,7 @@ export function StockHistory() {
   const resetAllFilters = () => {
     setFilters({
       datetime: [],
+      action: [],
       product_code: [],
       style_code: [],
       supplier: [],
@@ -137,6 +141,14 @@ export function StockHistory() {
                     options={[...new Set(enrichedData.map(item => item.formatted_date))]}
                     selectedValues={filters.datetime}
                     onChange={(values) => setFilters(prev => ({ ...prev, datetime: values }))}
+                  />
+                </th>
+                <th className="p-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-b min-w-[120px]">
+                  <FilterDropdown
+                    label="Action"
+                    options={['Added', 'Removed', 'Sold']}
+                    selectedValues={filters.action}
+                    onChange={(values) => setFilters(prev => ({ ...prev, action: values }))}
                   />
                 </th>
                 <th className="p-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-b min-w-[120px]">
@@ -207,6 +219,17 @@ export function StockHistory() {
               {sortedData.map((item, idx) => (
                 <tr key={idx} className="hover:bg-gray-50">
                   <td className="px-4 py-3 text-sm text-gray-900">{item.formatted_date}</td>
+                  <td className="px-4 py-3 text-sm">
+                    <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                      item.action === 'sold'
+                        ? 'bg-blue-100 text-blue-800'
+                        : item.quantity > 0 
+                          ? 'bg-green-100 text-green-800' 
+                          : 'bg-red-100 text-red-800'
+                    }`}>
+                      {item.action === 'sold' ? 'Sold' : (item.quantity > 0 ? 'Added' : 'Removed')}
+                    </span>
+                  </td>
                   <td className="px-4 py-3 text-sm text-gray-900">{item.product_code}</td>
                   <td className="px-4 py-3 text-sm text-gray-900">{item.style_code}</td>
                   <td className="px-4 py-3 text-sm text-gray-900">{item.supplier_name}</td>
@@ -218,7 +241,7 @@ export function StockHistory() {
                 </tr>
               ))}
               {sortedData.length === 0 && (
-                <tr><td colSpan="9" className="text-center py-4 text-gray-500">No stock history found.</td></tr>
+                <tr><td colSpan="10" className="text-center py-4 text-gray-500">No stock history found.</td></tr>
               )}
             </tbody>
           </table>

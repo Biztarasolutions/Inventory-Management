@@ -1,0 +1,547 @@
+import React, { useState, useEffect } from 'react';
+import { supabase } from '../supabaseClient';
+import SearchableDropdown from './SearchableDropdown';
+
+const CreateBill = () => {
+  const [customer, setCustomer] = useState({
+    phone: '',
+    name: '',
+    isExisting: false
+  });
+
+  const [billItems, setBillItems] = useState([
+    { 
+      id: 1, 
+      product_code: '', 
+      size: '', 
+      mrp: 0, 
+      quantity: 1,
+      discount: { type: 'percentage', value: 0 },
+      sellingPrice: 0,
+      total: 0,
+      availableQuantity: 0 
+    }
+  ]);
+  
+  const [discount, setDiscount] = useState({
+    type: 'percentage',
+    value: 0
+  });
+
+  const [payment, setPayment] = useState({
+    upi: 0,
+    cash: 0,
+    payLater: 0
+  });
+  
+  const [products, setProducts] = useState([]);
+  const [productOptions, setProductOptions] = useState([]);
+  const [inventoryQuantities, setInventoryQuantities] = useState({});
+  const [sizeOptions, setSizeOptions] = useState({});
+
+  const fetchData = async () => {
+    try {
+      console.log('Fetching data...');
+      const { data: inventory, error: inventoryError } = await supabase.from('inventory').select('*');
+      const { data: productData, error: productsError } = await supabase.from('products').select('*');
+
+      if (inventoryError) {
+        console.error('Error fetching inventory:', inventoryError);
+        return;
+      }
+      if (productsError) {
+        console.error('Error fetching products:', productsError);
+        return;
+      }
+
+      console.log('Products data:', productData);
+      console.log('Inventory data:', inventory);
+      
+      if (!productData || !inventory) {
+        console.log('No data received');
+        return;
+      }
+
+      setProducts(productData);
+      
+      // Calculate inventory quantities by product code and size
+      let inventoryMap = {};
+      let productCodes = new Set();
+      let sizeMap = {};
+      
+      // Process inventory data to calculate available quantities
+      inventory.forEach(item => {
+        const product = productData.find(p => p.id === item.product_id);
+        if (product) {
+          const productCode = product.code.toString();
+          const size = item.size;
+          const quantity = item.quantity || 0;
+          
+          productCodes.add(productCode);
+          
+          // Initialize product entry if it doesn't exist
+          if (!inventoryMap[productCode]) {
+            inventoryMap[productCode] = {};
+          }
+          
+          // Initialize size entry if it doesn't exist
+          if (!inventoryMap[productCode][size]) {
+            inventoryMap[productCode][size] = 0;
+          }
+          
+          // Add size to options if not already present
+          if (!sizeMap[productCode]) {
+            sizeMap[productCode] = new Set();
+          }
+          sizeMap[productCode].add(size);
+          
+          // Add quantity
+          inventoryMap[productCode][size] += quantity;
+        }
+      });
+
+      // Convert size Sets to arrays
+      Object.keys(sizeMap).forEach(code => {
+        sizeMap[code] = Array.from(sizeMap[code]);
+      });
+      
+      // Create product options array for dropdown
+      const options = Array.from(productCodes)
+        .filter(code => {
+          // Check if any size has positive inventory
+          const sizes = Object.keys(inventoryMap[code] || {});
+          return sizes.some(size => inventoryMap[code][size] > 0);
+        })
+        .map(code => { 
+          const product = productData.find(p => p.code.toString() === code);
+          return {
+            label: code + (product?.style_code ? ` - ${product.style_code}` : ''),
+            value: code 
+          };
+        });
+
+      console.log('Created product options:', options);
+      
+      setProductOptions(options);
+      setSizeOptions(sizeMap);
+      setInventoryQuantities(inventoryMap);
+    } catch (error) {
+      console.error('Error fetching data:', error);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const checkExistingCustomer = async (phone) => {
+    if (phone.length === 10) {
+      try {
+        const { data, error } = await supabase
+          .from('Customers')
+          .select('Name')
+          .eq('Phone Number', phone)
+          .single();
+        
+        if (error && error.code !== 'PGRST116') {
+          console.error('Supabase error:', error);
+          return;
+        }
+        
+        if (data && data.Name) {
+          setCustomer(prev => ({ ...prev, name: data.Name || '', isExisting: true }));
+        } else {
+          setCustomer(prev => ({ ...prev, name: '', isExisting: false }));
+        }
+      } catch (error) {
+        console.error('Error checking customer:', error);
+      }
+    } else {
+      setCustomer(prev => ({ ...prev, name: '', isExisting: false }));
+    }
+  };
+
+  const calculateAvailableQuantity = (product_code, size, currentIndex) => {
+    if (!product_code || !size || !inventoryQuantities[product_code] || !inventoryQuantities[product_code][size]) {
+      return 0;
+    }
+    
+    const totalInventory = inventoryQuantities[product_code][size] || 0;
+    const allocatedQuantity = billItems.reduce((sum, item, idx) => {
+      if (idx !== currentIndex && item.product_code === product_code && item.size === size) {
+        return sum + item.quantity;
+      }
+      return sum;
+    }, 0);
+    
+    return Math.max(0, totalInventory - allocatedQuantity);
+  };
+
+  const handleBillItemChange = (index, field, value) => {
+    const newBillItems = [...billItems];
+    
+    const updateItemPrices = (item) => {
+      // Calculate selling price based on MRP and discount
+      const sellingPrice = calculateSellingPrice(item);
+      item.sellingPrice = sellingPrice;
+      // Total is selling price multiplied by quantity
+      item.total = sellingPrice * item.quantity;
+    };
+    
+    if (field === 'product_code') {
+      newBillItems[index].product_code = value;
+      newBillItems[index].size = '';
+      newBillItems[index].mrp = 0;
+      newBillItems[index].quantity = 1;
+      newBillItems[index].total = 0;
+      newBillItems[index].availableQuantity = 0;
+    }
+    else if (field === 'size') {
+      newBillItems[index].size = value;
+      const product_code = newBillItems[index].product_code;
+      
+      if (product_code && value) {
+        const product = products.find(p => p.code.toString() === product_code);
+        if (product) {
+          newBillItems[index].mrp = product.mrp || 0;
+          const availableQty = calculateAvailableQuantity(product_code, value, index);
+          newBillItems[index].availableQuantity = availableQty;
+          if (newBillItems[index].quantity > availableQty) {
+            newBillItems[index].quantity = Math.max(1, availableQty);
+          }
+          updateItemPrices(newBillItems[index]);
+        }
+      }
+    }
+    else if (field === 'discount') {
+      // Update discount while preserving existing quantity
+      newBillItems[index].discount = value;
+      updateItemPrices(newBillItems[index]);
+    }
+    else if (field === 'quantity') {
+      const product_code = newBillItems[index].product_code;
+      const size = newBillItems[index].size;
+      
+      if (product_code && size) {
+        const availableQty = calculateAvailableQuantity(product_code, size, index);
+        newBillItems[index].availableQuantity = availableQty;
+        
+        if (value === 0 || value === '') {
+          newBillItems[index].quantity = 0;
+        } else {
+          const limitedValue = Math.min(value, availableQty);
+          newBillItems[index].quantity = limitedValue >= 0 ? limitedValue : 0;
+        }
+        
+        // Recalculate total with existing discount
+        updateItemPrices(newBillItems[index]);
+        
+        // Update available quantities for other items with same product and size
+        newBillItems.forEach((item, idx) => {
+          if (idx !== index && item.product_code === product_code && item.size === size) {
+            item.availableQuantity = calculateAvailableQuantity(item.product_code, item.size, idx);
+            if (item.quantity > item.availableQuantity && item.availableQuantity > 0) {
+              item.quantity = item.availableQuantity;
+              updateItemPrices(item);
+            }
+          }
+        });
+      }
+    }
+    
+    setBillItems(newBillItems);
+  };
+
+  const calculateSellingPrice = (item) => {
+    const mrp = parseFloat(item.mrp) || 0;
+    if (item.discount.type === 'percentage') {
+      return mrp * (1 - item.discount.value / 100);
+    }
+    return Math.max(0, mrp - item.discount.value);
+  };
+
+  // Rest of your component code...
+
+  return (
+    <div className="p-6 pl-3 md:pl-6 space-y-6">
+      {/* Customer Information */}
+      <div className="bg-white p-4 rounded-lg shadow">
+        <h2 className="text-lg font-semibold mb-3">Customer Information</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium mb-1">Phone Number</label>
+            <input
+              type="tel"
+              maxLength="10"
+              className="w-full p-2 border rounded-md"
+              value={customer.phone}
+              onChange={(e) => {
+                const phone = e.target.value.replace(/\D/g, '');
+                setCustomer({...customer, phone});
+                if (phone.length === 10) {
+                  checkExistingCustomer(phone);
+                }
+              }}
+              placeholder="Enter phone number"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">Name</label>
+            <input
+              type="text"
+              className={`w-full p-2 border rounded-md ${customer.isExisting ? 'bg-gray-100' : ''}`}
+              value={customer.name}
+              onChange={(e) => !customer.isExisting && setCustomer({...customer, name: e.target.value})}
+              disabled={customer.isExisting}
+              placeholder="Enter customer name"
+            />
+          </div>
+        </div>
+      </div>
+      
+      {/* Bill Items Table */}
+      <div>
+        <h2 className="text-lg font-semibold mb-3">Product Selection</h2>
+        <div className="overflow-x-auto">
+          <table className="w-full border-collapse mb-4">
+            <thead>
+              <tr className="bg-gray-100">
+                <th className="p-2 text-left font-medium border">Product</th>
+                <th className="p-2 text-left font-medium border">Size</th>
+                <th className="p-2 text-left font-medium border">MRP</th>
+                <th className="p-2 text-left font-medium border">Discount</th>
+                <th className="p-2 text-left font-medium border">Selling Price</th>
+                <th className="p-2 text-left font-medium border">Quantity</th>
+                <th className="p-2 text-left font-medium border">Total</th>
+                <th className="p-2 text-left font-medium border">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {billItems.map((item, index) => (
+                <tr key={item.id} className="border-t">
+                  <td className="p-2 border">
+                    <SearchableDropdown
+                      options={productOptions}
+                      value={item.product_code}
+                      onChange={(value) => handleBillItemChange(index, 'product_code', value)}
+                      placeholder="Select product"
+                    />
+                  </td>
+                  <td className="p-2 border">
+                    <select
+                      className="w-full p-2 border rounded"
+                      value={item.size}
+                      onChange={(e) => handleBillItemChange(index, 'size', e.target.value)}
+                      disabled={!item.product_code}
+                    >
+                      <option value="">Select size</option>
+                      {sizeOptions[item.product_code]?.map((size) => (
+                        <option key={size} value={size}>{size}</option>
+                      ))}
+                    </select>
+                  </td>
+                  <td className="p-2 border text-right">{item.mrp.toFixed(2)}</td>
+                  <td className="p-2 border">
+                    <div className="flex items-center space-x-2">
+                      <select
+                        className="p-1 border rounded"
+                        value={item.discount.type}
+                        onChange={(e) => handleBillItemChange(index, 'discount', { ...item.discount, type: e.target.value })}
+                        disabled={!item.size}
+                      >
+                        <option value="percentage">%</option>
+                        <option value="amount">₹</option>
+                      </select>
+                      <input
+                        type="number"
+                        min="0"
+                        max={item.discount.type === 'percentage' ? 100 : item.mrp}
+                        className="w-20 p-1 border rounded"
+                        value={item.discount.value}
+                        onChange={(e) => {
+                          let value = parseFloat(e.target.value) || 0;
+                          if (item.discount.type === 'percentage') {
+                            value = Math.min(100, Math.max(0, value));
+                          } else {
+                            value = Math.min(item.mrp, Math.max(0, value));
+                          }
+                          handleBillItemChange(index, 'discount', { ...item.discount, value });
+                        }}
+                        disabled={!item.size}
+                      />
+                    </div>
+                  </td>
+                  <td className="p-2 border text-right">{item.sellingPrice.toFixed(2)}</td>
+                  <td className="p-2 border">
+                    <div className="flex items-center space-x-2">
+                      <input
+                        type="number"
+                        min="0"
+                        max={item.availableQuantity}
+                        className="w-20 p-1 border rounded"
+                        value={item.quantity}
+                        onChange={(e) => handleBillItemChange(index, 'quantity', parseInt(e.target.value) || 0)}
+                        disabled={!item.size}
+                      />
+                      <span className="text-sm text-gray-500">
+                        (Max: {item.availableQuantity})
+                      </span>
+                    </div>
+                  </td>
+                  <td className="p-2 border text-right">{item.total.toFixed(2)}</td>
+                  <td className="p-2 border">
+                    <button
+                      onClick={() => {
+                        if (billItems.length === 1) {
+                          setBillItems([{
+                            id: Date.now(),
+                            product_code: '',
+                            size: '',
+                            mrp: 0,
+                            quantity: 1,
+                            discount: { type: 'percentage', value: 0 },
+                            sellingPrice: 0,
+                            total: 0,
+                            availableQuantity: 0
+                          }]);
+                        } else {
+                          setBillItems(billItems.filter((_, idx) => idx !== index));
+                        }
+                      }}
+                      className="p-1 text-red-600 hover:text-red-800"
+                    >
+                      Remove
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <button
+            onClick={() => {
+              setBillItems([...billItems, {
+                id: Date.now(),
+                product_code: '',
+                size: '',
+                mrp: 0,
+                quantity: 1,
+                discount: { type: 'percentage', value: 0 },
+                sellingPrice: 0,
+                total: 0,
+                availableQuantity: 0
+              }]);
+            }}
+            className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+          >
+            Add Item
+          </button>
+        </div>
+      </div>
+
+      {/* Bill Summary */}
+      <div className="bg-white p-4 rounded-lg shadow">
+        <h2 className="text-lg font-semibold mb-3">Bill Summary</h2>
+        <div className="space-y-4">
+          <div className="flex justify-between">
+            <span>Sub Total:</span>
+            <span>₹ {billItems.reduce((sum, item) => sum + item.total, 0).toFixed(2)}</span>
+          </div>
+          <div>
+            <div className="flex items-center space-x-4 mb-2">
+              <label className="font-medium">Bill Discount:</label>
+              <select
+                className="p-2 border rounded"
+                value={discount.type}
+                onChange={(e) => setDiscount({ ...discount, type: e.target.value })}
+              >
+                <option value="percentage">Percentage</option>
+                <option value="amount">Amount</option>
+              </select>
+              <input
+                type="number"
+                min="0"
+                className="p-2 border rounded w-24"
+                value={discount.value}
+                onChange={(e) => {
+                  let value = parseFloat(e.target.value) || 0;
+                  if (discount.type === 'percentage') {
+                    value = Math.min(100, value);
+                  }
+                  setDiscount({ ...discount, value });
+                }}
+              />
+            </div>
+            <div className="flex justify-between text-sm text-gray-600">
+              <span>Discount Amount:</span>
+              <span>₹ {calculateBillDiscount().toFixed(2)}</span>
+            </div>
+          </div>
+          <div className="flex justify-between font-bold">
+            <span>Grand Total:</span>
+            <span>₹ {calculateGrandTotal().toFixed(2)}</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Payment Section */}
+      <div className="bg-white p-4 rounded-lg shadow">
+        <h2 className="text-lg font-semibold mb-3">Payment Details</h2>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div>
+            <label className="block text-sm font-medium mb-1">UPI</label>
+            <input
+              type="number"
+              min="0"
+              className="w-full p-2 border rounded-md"
+              value={payment.upi}
+              onChange={(e) => setPayment({ ...payment, upi: parseFloat(e.target.value) || 0 })}
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">Cash</label>
+            <input
+              type="number"
+              min="0"
+              className="w-full p-2 border rounded-md"
+              value={payment.cash}
+              onChange={(e) => setPayment({ ...payment, cash: parseFloat(e.target.value) || 0 })}
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">Pay Later</label>
+            <input
+              type="number"
+              min="0"
+              className="w-full p-2 border rounded-md"
+              value={payment.payLater}
+              onChange={(e) => setPayment({ ...payment, payLater: parseFloat(e.target.value) || 0 })}
+            />
+          </div>
+        </div>
+        <div className="mt-4 flex justify-between text-sm">
+          <span>Total Payment: ₹ {(payment.upi + payment.cash + payment.payLater).toFixed(2)}</span>
+          <span className={payment.upi + payment.cash + payment.payLater === calculateGrandTotal() ? 'text-green-600' : 'text-red-600'}>
+            {payment.upi + payment.cash + payment.payLater === calculateGrandTotal() ? 'Payment Complete' : 'Payment Incomplete'}
+          </span>
+        </div>
+      </div>
+
+      {/* Actions */}
+      <div className="flex justify-end space-x-4">
+        <button
+          onClick={handleSaveAndPrint}
+          disabled={!isValidForSave()}
+          className={`px-6 py-2 rounded-md ${
+            isValidForSave()
+              ? 'bg-green-500 hover:bg-green-600 text-white'
+              : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+          }`}
+        >
+          Save & Print
+        </button>
+      </div>
+    </div>
+  );
+};
+
+export default CreateBill;

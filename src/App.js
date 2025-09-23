@@ -1,8 +1,10 @@
 import React, { useState } from "react";
 import { BrowserRouter as Router, Routes, Route, useLocation } from "react-router-dom";
 import "./responsive.css";
+import "./styles.css";
 import { Navigation } from "./components/Navigation";
-import { CreateBill } from "./components/CreateBill";
+import CreateBill from "./components/CreateBill";
+import Orders from "./components/Orders";
 import { StockInventory } from "./components/StockInventory";
 import { AddStocks } from "./components/AddStocks";
 import { StockHistory } from "./components/StockHistory";
@@ -47,6 +49,7 @@ export function formatDateTime(dateString) {
 // Page name mapping for navigation
 const pageNames = {
   "/create-bill": "Create Bill",
+  "/orders": "Orders",
   "/add-stocks": "Add Stocks",
   "/stock-inventory": "Stock Inventory",
   "/stock-history": "Stock History",
@@ -59,10 +62,11 @@ function AppContent({ navOpen, setNavOpen }) {
   const currentPage = pageNames[location.pathname] || "";
   const navLinks = [
     { to: "/create-bill", label: "Create Bill", icon: "🧾" },
-    { to: "/add-stocks", label: "Add Stocks", icon: "📦" },
-    { to: "/stock-inventory", label: "Stock Inventory", icon: "📋" },
-    { to: "/stock-history", label: "Stock History", icon: "🕑" },
-    { to: "/add-supplier", label: "Add Supplier", icon: "🏷️" }
+    { to: "/orders", label: "Orders", icon: "�" },
+    { to: "/add-stocks", label: "Add Stocks", icon: "➕" },
+    { to: "/stock-inventory", label: "Stock Inventory", icon: "�" },
+    { to: "/stock-history", label: "Stock History", icon: "�" },
+    { to: "/add-supplier", label: "Add Supplier", icon: "�" }
   ];
 
   return (
@@ -73,6 +77,7 @@ function AppContent({ navOpen, setNavOpen }) {
           <Routes>
             <Route path="/" element={<CreateBill />} />
             <Route path="/create-bill" element={<CreateBill />} />
+            <Route path="/orders" element={<Orders />} />
             <Route path="/add-stocks" element={<AddStocks />} />
             <Route path="/stock-inventory" element={<StockInventory />} />
             <Route path="/stock-history" element={<StockHistory />} />

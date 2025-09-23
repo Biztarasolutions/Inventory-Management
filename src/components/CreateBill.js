@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
 import SearchableDropdown from './SearchableDropdown';
 
-export function CreateBill() {
+const CreateBill = () => {
   const [customer, setCustomer] = useState({
     phone: '',
     name: '',
@@ -35,35 +35,45 @@ export function CreateBill() {
   
   const [products, setProducts] = useState([]);
   const [productOptions, setProductOptions] = useState([]);
-  const [sizeOptions, setSizeOptions] = useState({});
   const [inventoryQuantities, setInventoryQuantities] = useState({});
-
-  useEffect(() => {
-    const fetchAndSetData = async () => {
-      try {
-        await fetchData();
-      } catch (error) {
-        console.error('Error in useEffect:', error);
-      }
-    };
-    fetchAndSetData();
-  }, []);
+  const [sizeOptions, setSizeOptions] = useState({});
 
   const fetchData = async () => {
     try {
+      console.log('Fetching data...');
       const [inventoryData, productsData] = await Promise.all([
         supabase.from('inventory').select('*'),
         supabase.from('products').select('*')
       ]);
 
+      if (inventoryData.error) {
+        console.error('Error fetching inventory:', inventoryData.error);
+        return;
+      }
+      if (productsData.error) {
+        console.error('Error fetching products:', productsData.error);
+        return;
+      }
+
       const inventoryItems = inventoryData.data || [];
       const productItems = productsData.data || [];
+      
+      console.log('Products data:', productItems);
+      console.log('Inventory data:', inventoryItems);
+      
+      if (!productItems.length || !inventoryItems.length) {
+        console.log('No data received');
+        return;
+      }
+
       setProducts(productItems);
       
+      // Calculate inventory quantities by product code and size
       const inventoryByProductAndSize = {};
       const productCodesWithInventory = new Set();
       const sizeOpts = {};
       
+      // Process inventory data to calculate available quantities
       inventoryItems.forEach(item => {
         const product = productItems.find(p => p.id === item.product_id);
         if (product) {
@@ -71,52 +81,66 @@ export function CreateBill() {
           const size = item.size;
           const quantity = item.quantity || 0;
           
+          productCodesWithInventory.add(productCode);
+          
+          // Initialize product entry if it doesn't exist
           if (!inventoryByProductAndSize[productCode]) {
             inventoryByProductAndSize[productCode] = {};
           }
           
+          // Initialize size entry if it doesn't exist
           if (!inventoryByProductAndSize[productCode][size]) {
             inventoryByProductAndSize[productCode][size] = 0;
           }
           
-          inventoryByProductAndSize[productCode][size] += quantity;
-          
-          if (inventoryByProductAndSize[productCode][size] > 0) {
-            productCodesWithInventory.add(productCode);
-            
-            if (!sizeOpts[productCode]) {
-              sizeOpts[productCode] = [];
-            }
-            if (size && !sizeOpts[productCode].includes(size)) {
-              sizeOpts[productCode].push(size);
-            }
+          // Add size to options if not already present
+          if (!sizeOpts[productCode]) {
+            sizeOpts[productCode] = new Set();
           }
+          sizeOpts[productCode].add(size);
+          
+          // Add quantity
+          inventoryByProductAndSize[productCode][size] += quantity;
         }
       });
-      
-      Object.keys(sizeOpts).forEach(productCode => {
-        sizeOpts[productCode] = sizeOpts[productCode].filter(size => 
-          inventoryByProductAndSize[productCode][size] > 0
-        );
+
+      // Convert size Sets to arrays
+      Object.keys(sizeOpts).forEach(code => {
+        sizeOpts[code] = Array.from(sizeOpts[code]);
       });
       
+      // Create product options array for dropdown
       const productOpts = Array.from(productCodesWithInventory)
         .filter(code => {
+          // Check if any size has positive inventory
           const sizes = Object.keys(inventoryByProductAndSize[code] || {});
           return sizes.some(size => inventoryByProductAndSize[code][size] > 0);
         })
-        .map(code => ({ 
-          label: code,
-          value: code 
-        }));
+        .map(code => { 
+          const product = productItems.find(p => p.code.toString() === code);
+          return {
+            label: code + (product?.style_code ? ` - ${product.style_code}` : ''),
+            value: code 
+          };
+        });
+
+      console.log('Product options:', productOpts);
+      console.log('Size options:', sizeOpts);
+      console.log('Inventory quantities:', inventoryByProductAndSize);
       
       setProductOptions(productOpts);
       setSizeOptions(sizeOpts);
       setInventoryQuantities(inventoryByProductAndSize);
+
     } catch (error) {
       console.error('Error fetching data:', error);
     }
   };
+
+
+  useEffect(() => {
+    fetchData();
+  }, []);
 
   const checkExistingCustomer = async (phone) => {
     if (phone.length === 10) {
@@ -163,14 +187,6 @@ export function CreateBill() {
 
   const handleBillItemChange = (index, field, value) => {
     const newBillItems = [...billItems];
-    
-    const updateItemPrices = (item) => {
-      // Calculate selling price based on MRP and discount
-      const sellingPrice = calculateSellingPrice(item);
-      item.sellingPrice = sellingPrice;
-      // Total is selling price multiplied by quantity
-      item.total = sellingPrice * item.quantity;
-    };
     
     if (field === 'product_code') {
       newBillItems[index].product_code = value;
@@ -267,20 +283,27 @@ export function CreateBill() {
     }
   };
 
+  const calculateMRPTotal = () => {
+    return billItems.reduce((sum, item) => sum + (item.mrp * item.quantity), 0);
+  };
+
   const calculateSubtotal = () => {
     return billItems.reduce((sum, item) => sum + item.total, 0);
   };
 
   const calculateDiscountAmount = () => {
-    const subtotal = calculateSubtotal();
-    if (discount.type === 'percentage') {
-      return (subtotal * discount.value) / 100;
-    }
-    return discount.value;
+    const mrpTotal = calculateMRPTotal();
+    const finalTotal = calculateSubtotal();
+    return mrpTotal - finalTotal;
   };
 
   const calculateTotal = () => {
-    return calculateSubtotal() - calculateDiscountAmount();
+    const subtotal = calculateSubtotal();
+    if (discount.type === 'percentage') {
+      return subtotal - (subtotal * discount.value / 100);
+    } else {
+      return Math.max(0, subtotal - discount.value);
+    }
   };
 
   const calculateRemaining = () => {
@@ -335,8 +358,24 @@ export function CreateBill() {
   };
 
   const handlePrintBill = async () => {
-    if (!customer.isExisting && customer.phone.length === 10 && customer.name && customer.name.trim()) {
-      try {
+    try {
+      // First get the next order number
+      const { data: lastOrder, error: lastOrderError } = await supabase
+        .from('Orders')
+        .select('order_no')
+        .order('order_no', { ascending: false })
+        .limit(1)
+        .single();
+
+      if (lastOrderError && lastOrderError.code !== 'PGRST116') { // PGRST116 means no rows returned
+        console.error('Error fetching last order number:', lastOrderError);
+        throw lastOrderError;
+      }
+
+      const nextOrderNo = lastOrder ? parseInt(lastOrder.order_no) + 1 : 123451;
+
+      // Handle customer creation/verification
+      if (!customer.isExisting && customer.phone.length === 10 && customer.name && customer.name.trim()) {
         const { data: existingCustomer, error: checkError } = await supabase
           .from('Customers')
           .select('*')
@@ -362,14 +401,121 @@ export function CreateBill() {
         }
         
         setCustomer(prev => ({ ...prev, isExisting: true }));
-      } catch (error) {
-        console.error('Error saving customer:', error);
-        alert('Failed to save customer information: ' + error.message);
-        return;
       }
+
+      // Prepare order data
+      const orderData = billItems.map(item => ({
+        order_no: nextOrderNo,
+        customer_name: customer.name,
+        phone_number: customer.phone,
+        product: item.product_code,
+        size: item.size,
+        mrp: item.mrp,
+        quantity: item.quantity,
+        discount_type: item.discount.type,
+        discount: item.discount.value,
+        selling_price: item.total / item.quantity,
+        total: item.total,
+        additional_discount_type: discount.type,
+        additional_discount: discount.value,
+        order_amount: calculateTotal(),
+        upi_amount: payment.upi,
+        cash_amount: payment.cash,
+        pay_later: payment.payLater,
+        created_at: new Date().toISOString()
+      }));
+
+      // Save order data to Supabase
+      const { error: orderError } = await supabase
+        .from('Orders')
+        .insert(orderData);
+
+      if (orderError) {
+        console.error('Error saving order:', orderError);
+        throw orderError;
+      }
+
+      // Add entries to stock history for each purchased item
+      const stockHistoryEntries = billItems.map(item => {
+        const product = products.find(p => p.code.toString() === item.product_code);
+        return {
+          product_id: product?.id,
+          size: item.size,
+          quantity: -item.quantity, // Negative quantity because stock is being reduced
+          date: new Date().toISOString(),
+          note: `Order #${nextOrderNo} - ${customer.name}`,
+          action: 'sold' // Explicitly mark as sold instead of removed
+        };
+      });
+
+      // First, get current inventory for all products being sold
+      const promises = billItems.map(async (item) => {
+        const product = products.find(p => p.code.toString() === item.product_code);
+        if (!product) return null;
+
+        const { data: currentInventory, error: invError } = await supabase
+          .from('inventory')
+          .select('id, quantity')
+          .eq('product_id', product.id)
+          .eq('size', item.size)
+          .gt('quantity', 0)  // Only get entries with positive quantity
+          .order('date', { ascending: true });  // Get oldest entries first (FIFO)
+
+        if (invError) {
+          console.error('Error fetching inventory:', invError);
+          throw invError;
+        }
+
+        return { item, product, currentInventory: currentInventory || [] };
+      });
+
+      const inventoryData = await Promise.all(promises);
+
+      // Update existing inventory entries and create history entries
+      for (const data of inventoryData) {
+        if (!data) continue;
+        const { item, product, currentInventory } = data;
+        let remainingQuantity = item.quantity;
+
+        // Update existing inventory entries
+        for (const inv of currentInventory) {
+          if (remainingQuantity <= 0) break;
+
+          const deductQuantity = Math.min(remainingQuantity, inv.quantity);
+          const newQuantity = inv.quantity - deductQuantity;
+
+          // Update the inventory entry
+          const { error: updateError } = await supabase
+            .from('inventory')
+            .update({ quantity: newQuantity })
+            .eq('id', inv.id);
+
+          if (updateError) {
+            console.error('Error updating inventory:', updateError);
+            throw updateError;
+          }
+
+          remainingQuantity -= deductQuantity;
+        }
+      }
+
+      // Add entries to stock history
+      const { error: stockHistoryError } = await supabase
+        .from('inventory')
+        .insert(stockHistoryEntries);
+
+      if (stockHistoryError) {
+        console.error('Error updating stock history:', stockHistoryError);
+        throw stockHistoryError;
+      }
+      
+      // Print the bill after saving
+      window.print();
+    } catch (error) {
+      console.error('Error processing bill:', error);
+      alert('Failed to save order information: ' + error.message);
+      return;
     }
-    
-    window.print();
 
     setTimeout(() => {
       setCustomer({
@@ -385,23 +531,29 @@ export function CreateBill() {
           size: '', 
           mrp: 0, 
           quantity: 1, 
+          discount: { type: 'percentage', value: 0 },
+          sellingPrice: 0,
           total: 0,
           availableQuantity: 0
         }
       ]);
 
-      setDiscount({
-        type: 'percentage',
-        value: 0
-      });
+
 
       setPayment({
         upi: 0,
         cash: 0,
         payLater: 0
       });
+
+      setDiscount({
+        type: 'percentage',
+        value: 0
+      });
     }, 100);
   };
+
+
 
   return (
     <div className="p-6 pb-24">
@@ -499,6 +651,13 @@ export function CreateBill() {
                         max={item.availableQuantity || 1}
                         className="w-full p-2 border rounded no-spinner text-center"
                         value={item.quantity}
+                        onKeyDown={(e) => {
+                          // Prevent scrolling from changing the value
+                          if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+                            e.preventDefault();
+                          }
+                        }}
+                        onWheel={(e) => e.target.blur()} // Prevent scroll from changing value
                         onChange={(e) => handleBillItemChange(index, 'quantity', parseInt(e.target.value) || 0)}
                       />
                     </td>
@@ -524,6 +683,12 @@ export function CreateBill() {
                         step={item.discount.type === 'percentage' ? 1 : 0.01}
                         className="w-full p-2 border rounded no-spinner text-center"
                         value={item.discount.value}
+                        onKeyDown={(e) => {
+                          if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+                            e.preventDefault();
+                          }
+                        }}
+                        onWheel={(e) => e.target.blur()}
                         onChange={(e) => {
                           const newValue = parseFloat(e.target.value) || 0;
                           const maxValue = item.discount.type === 'percentage' ? 100 : item.mrp;
@@ -565,9 +730,9 @@ export function CreateBill() {
           >
             Add Item
           </button>
-          
-          <div className="bg-gray-50 p-4 rounded-md">
-            <h2 className="text-lg font-semibold mb-3">Discount</h2>
+
+          <div className="bg-gray-50 p-4 rounded-md mt-4">
+            <h2 className="text-lg font-semibold mb-3">Additional Discount</h2>
             <div className="flex items-center gap-4 flex-wrap">
               <div className="flex items-center">
                 <input
@@ -594,8 +759,16 @@ export function CreateBill() {
               <input
                 type="number"
                 min="0"
+                max={discount.type === 'percentage' ? 100 : undefined}
+                step={discount.type === 'percentage' ? 1 : 0.01}
                 className="p-2 border rounded-md w-32"
                 value={discount.value || ''}
+                onKeyDown={(e) => {
+                  if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+                    e.preventDefault();
+                  }
+                }}
+                onWheel={(e) => e.target.blur()}
                 onChange={(e) => {
                   const value = e.target.value ? parseFloat(e.target.value) : 0;
                   setDiscount({...discount, value: value});
@@ -607,21 +780,27 @@ export function CreateBill() {
           <div className="bg-gray-50 p-4 rounded-md">
             <h2 className="text-lg font-semibold mb-3">Bill Summary</h2>
             <div className="flex justify-between mb-2">
-              <span>Subtotal:</span>
-              <span>₹{calculateSubtotal().toFixed(2)}</span>
+              <span>Total MRP:</span>
+              <span>₹{calculateMRPTotal().toFixed(2)}</span>
             </div>
             <div className="flex justify-between mb-2">
-              <span>Discount ({
-                discount.type === 'percentage' 
-                  ? `${discount.value}%` 
-                  : calculateSubtotal() > 0
-                    ? `${((discount.value / calculateSubtotal()) * 100).toFixed(2)}%`
-                    : '0%'
+              <span>Item Discounts ({
+                calculateMRPTotal() > 0
+                  ? `${((calculateDiscountAmount() / calculateMRPTotal()) * 100).toFixed(2)}%`
+                  : '0%'
               }):</span>
-              <span>₹{calculateDiscountAmount().toFixed(2)}</span>
+              <span>-₹{calculateDiscountAmount().toFixed(2)}</span>
+            </div>
+            <div className="flex justify-between mb-2">
+              <span>Additional Discount ({
+                calculateSubtotal() > 0
+                  ? `${((calculateSubtotal() - calculateTotal()) / calculateSubtotal() * 100).toFixed(2)}%`
+                  : '0%'
+              }):</span>
+              <span>-₹{(calculateSubtotal() - calculateTotal()).toFixed(2)}</span>
             </div>
             <div className="flex justify-between font-bold text-lg">
-              <span>Total:</span>
+              <span>Order Amount:</span>
               <span>₹{calculateTotal().toFixed(2)}</span>
             </div>
           </div>
@@ -637,6 +816,12 @@ export function CreateBill() {
                     min="0"
                     className="w-full p-2 border rounded-md"
                     value={payment.upi || ''}
+                    onKeyDown={(e) => {
+                      if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+                        e.preventDefault();
+                      }
+                    }}
+                    onWheel={(e) => e.target.blur()}
                     onChange={(e) => {
                       const value = e.target.value ? parseFloat(e.target.value) : 0;
                       setPayment({ ...payment, upi: value });
@@ -651,6 +836,12 @@ export function CreateBill() {
                     min="0"
                     className="w-full p-2 border rounded-md"
                     value={payment.cash || ''}
+                    onKeyDown={(e) => {
+                      if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+                        e.preventDefault();
+                      }
+                    }}
+                    onWheel={(e) => e.target.blur()}
                     onChange={(e) => {
                       const value = e.target.value ? parseFloat(e.target.value) : 0;
                       setPayment({ ...payment, cash: value });
@@ -676,8 +867,8 @@ export function CreateBill() {
             </div>
 
             <div className="mt-4 p-3 bg-white rounded-md">
-              <div className="flex justify-between items-center text-sm">
-                <span>Total Bill Amount:</span>
+              <div className="flex justify-between items-center text-sm font-semibold">
+                <span>Order Amount:</span>
                 <span>₹{calculateTotal().toFixed(2)}</span>
               </div>
               <div className="flex justify-between items-center text-sm mt-2">
@@ -715,7 +906,7 @@ export function CreateBill() {
                   : !billItems.some(item => item.product_code && item.size && item.quantity > 0)
                     ? "Please select at least one product with size and quantity"
                     : calculateRemaining() !== 0 
-                      ? "Please ensure payment equals total bill amount"
+                      ? "Please ensure payment equals total order amount"
                       : ""
             }
           >
@@ -747,4 +938,6 @@ export function CreateBill() {
       `}</style>
     </div>
   );
-}
+};
+
+export default CreateBill;

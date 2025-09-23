@@ -8,8 +8,9 @@ export function Navigation({ navOpen, setNavOpen, currentPage }) {
 
   const navLinks = [
     { to: '/create-bill', label: 'Create Bill', icon: '🧾' },
+    { to: '/orders', label: 'Orders', icon: '📋' },
     { to: '/add-stocks', label: 'Add Stocks', icon: '📦' },
-    { to: '/stock-inventory', label: 'Stock Inventory', icon: '📋' },
+    { to: '/stock-inventory', label: 'Stock Inventory', icon: '�' },
     { to: '/stock-history', label: 'Stock History', icon: '🕑' },
     { to: '/add-supplier', label: 'Add Supplier', icon: '🏷️' },
   ];
