@@ -470,9 +470,9 @@ const CreateBill = () => {
 
       // Update existing inventory entries and create history entries
       for (const data of inventoryData) {
-        if (!data) continue;
-        const { item, product, currentInventory } = data;
-        let remainingQuantity = item.quantity;
+  if (!data) continue;
+  const { item, currentInventory } = data;
+  let remainingQuantity = item.quantity;
 
         // Update existing inventory entries
         for (const inv of currentInventory) {
