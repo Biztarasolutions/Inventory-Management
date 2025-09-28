@@ -74,8 +74,11 @@ export function StockInventory() {
       if (item.action === 'added') {
         productData.sizes.set(item.size, (productData.sizes.get(item.size) || 0) + qty);
         productData.total_stock += Math.max(0, qty); // Only add positive quantities to total
-      } else if (item.action === 'deleted') {
-        productData.sizes.set(item.size, (productData.sizes.get(item.size) || 0) - qty);
+      } else if (item.action === 'deleted' || item.action === 'sold') {
+        // Always subtract the absolute value of quantity
+        const currentQty = productData.sizes.get(item.size) || 0;
+        const newQty = currentQty - Math.abs(qty);
+        productData.sizes.set(item.size, newQty);
         // Don't subtract from total_stock, we'll recalculate it at the end
       }
     });
@@ -84,7 +87,11 @@ export function StockInventory() {
     productMap.forEach(product => {
       product.total_stock = Array.from(product.sizes.values())
         .filter(quantity => quantity > 0)
-        .reduce((sum, quantity) => sum + quantity, 0);
+        .reduce((sum, quantity) => sum + (quantity > 0 ? quantity : 0), 0);
+      // Remove sizes with zero or negative quantity
+      for (const [size, qty] of product.sizes.entries()) {
+        if (qty <= 0) product.sizes.delete(size);
+      }
     });
     
     // Add available sizes as a comma-separated string for filtering

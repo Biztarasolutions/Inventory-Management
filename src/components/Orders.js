@@ -40,11 +40,11 @@ const Orders = () => {
     }
   };
 
-  const calculateCartDiscount = (order) => {
-    if (order.additional_discount_type === 'fixed') {
-      return order.additional_discount || 0;
+  const calculateOrderDiscount = (order) => {
+    if (order.order_discount_type === 'fixed') {
+      return order.order_discount || 0;
     } else { // percentage
-      return ((order.order_amount * (order.additional_discount || 0)) / 100);
+      return ((order.order_amount * (order.order_discount || 0)) / 100);
     }
   };
 
@@ -87,7 +87,7 @@ const Orders = () => {
                   <th className="p-2 text-right font-medium border">Selling Price</th>
                   <th className="p-2 text-center font-medium border">Quantity</th>
                   <th className="p-2 text-right font-medium border">Total</th>
-                  <th className="p-2 text-right font-medium border">Cart Discount</th>
+                  <th className="p-2 text-right font-medium border">Order Discount</th>
                   <th className="p-2 text-right font-medium border">Order Amount</th>
                   <th className="p-2 text-right font-medium border">UPI Amount</th>
                   <th className="p-2 text-right font-medium border">Cash Amount</th>
@@ -108,7 +108,7 @@ const Orders = () => {
                     <td className="p-2 border text-right">₹{order.selling_price.toFixed(2)}</td>
                     <td className="p-2 border text-center">{order.quantity}</td>
                     <td className="p-2 border text-right">₹{order.total.toFixed(2)}</td>
-                    <td className="p-2 border text-right">₹{calculateCartDiscount(order).toFixed(2)}</td>
+                    <td className="p-2 border text-right">₹{calculateOrderDiscount(order).toFixed(2)}</td>
                     <td className="p-2 border text-right">₹{order.order_amount.toFixed(2)}</td>
                     <td className="p-2 border text-right">₹{order.upi_amount.toFixed(2)}</td>
                     <td className="p-2 border text-right">₹{order.cash_amount.toFixed(2)}</td>

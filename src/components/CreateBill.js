@@ -297,13 +297,22 @@ const CreateBill = () => {
     return mrpTotal - finalTotal;
   };
 
+  // New additional discount calculation
+  const calculateAdditionalDiscount = () => {
+    if (discount.type === 'amount') {
+      return discount.value;
+    } else {
+      // percentage: (Total MRP - item discount) * discount.value / 100
+      const mrpTotal = calculateMRPTotal();
+      const itemDiscount = calculateDiscountAmount();
+      return (mrpTotal - itemDiscount) * discount.value / 100;
+    }
+  };
+
+  // New total calculation using new additional discount
   const calculateTotal = () => {
     const subtotal = calculateSubtotal();
-    if (discount.type === 'percentage') {
-      return subtotal - (subtotal * discount.value / 100);
-    } else {
-      return Math.max(0, subtotal - discount.value);
-    }
+    return Math.max(0, subtotal - calculateAdditionalDiscount());
   };
 
   const calculateRemaining = () => {
@@ -416,8 +425,8 @@ const CreateBill = () => {
         discount: item.discount.value,
         selling_price: item.total / item.quantity,
         total: item.total,
-        additional_discount_type: discount.type,
-        additional_discount: discount.value,
+  order_discount_type: discount.type,
+  order_discount: discount.value,
         order_amount: calculateTotal(),
         upi_amount: payment.upi,
         cash_amount: payment.cash,
@@ -789,12 +798,8 @@ const CreateBill = () => {
               <span>-₹{calculateDiscountAmount().toFixed(2)}</span>
             </div>
             <div className="flex justify-between mb-2">
-              <span>Additional Discount ({
-                calculateSubtotal() > 0
-                  ? `${((calculateSubtotal() - calculateTotal()) / calculateSubtotal() * 100).toFixed(2)}%`
-                  : '0%'
-              }):</span>
-              <span>-₹{(calculateSubtotal() - calculateTotal()).toFixed(2)}</span>
+              <span>Order Discount(%)</span>
+              <span>-₹{calculateAdditionalDiscount().toFixed(2)}</span>
             </div>
             <div className="flex justify-between font-bold text-lg">
               <span>Order Amount:</span>
