@@ -9,6 +9,8 @@ import { StockInventory } from "./components/StockInventory";
 import { AddStocks } from "./components/AddStocks";
 import { StockHistory } from "./components/StockHistory";
 import { AddSupplier } from "./components/AddSupplier";
+import Sales from "./components/Sales";
+import Expense from "./components/Expense";
 
 // Constants for sizes
 export const SIZES = ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL'];
@@ -54,6 +56,8 @@ const pageNames = {
   "/stock-inventory": "Stock Inventory",
   "/stock-history": "Stock History",
   "/add-supplier": "Add Supplier",
+  "/sales": "Sales",
+  "/expense": "Expense",
   "/": "Add Stocks"
 };
 
@@ -82,6 +86,8 @@ function AppContent({ navOpen, setNavOpen }) {
             <Route path="/stock-inventory" element={<StockInventory />} />
             <Route path="/stock-history" element={<StockHistory />} />
             <Route path="/add-supplier" element={<AddSupplier />} />
+            <Route path="/sales" element={<Sales />} />
+            <Route path="/expense" element={<Expense />} />
           </Routes>
         </main>
       </div>

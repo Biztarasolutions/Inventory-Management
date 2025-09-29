@@ -859,6 +859,12 @@ const CreateBill = () => {
                   min="0"
                   className="w-full p-2 border rounded-md"
                   value={payment.payLater || ''}
+                  onKeyDown={(e) => {
+                    if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+                      e.preventDefault();
+                    }
+                  }}
+                  onWheel={(e) => e.target.blur()}
                   onChange={(e) => {
                     const value = e.target.value ? parseFloat(e.target.value) : 0;
                     setPayment({ ...payment, payLater: value });

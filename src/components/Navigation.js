@@ -10,9 +10,11 @@ export function Navigation({ navOpen, setNavOpen, currentPage }) {
     { to: '/create-bill', label: 'Create Bill', icon: '🧾' },
     { to: '/orders', label: 'Orders', icon: '📋' },
     { to: '/add-stocks', label: 'Add Stocks', icon: '📦' },
-    { to: '/stock-inventory', label: 'Stock Inventory', icon: '�' },
+    { to: '/stock-inventory', label: 'Stock Inventory', icon: <img src="/stock%20inventory.png" alt="Stock Inventory" style={{ width: 22, height: 22, display: 'inline', verticalAlign: 'middle' }} /> },
     { to: '/stock-history', label: 'Stock History', icon: '🕑' },
     { to: '/add-supplier', label: 'Add Supplier', icon: '🏷️' },
+    { to: '/sales', label: 'Sales', icon: '💰' },
+    { to: '/expense', label: 'Expense', icon: '📝' },
   ];
 
   const handleMouseMove = useCallback((e) => {

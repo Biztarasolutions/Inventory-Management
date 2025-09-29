@@ -1,726 +1,270 @@
-import React, { useState, useEffect } from 'react';
+
+import React, { useEffect, useState } from 'react';
 import { supabase } from '../supabaseClient';
 import SearchableDropdown from './SearchableDropdown';
 
-export function Sales() {
-  const [customer, setCustomer] = useState({
-    phone: '',
-    name: '',
-    isExisting: false
-  });
+const PAYMENT_MODES = [
+  { label: 'Cash', value: 'cash' },
+  { label: 'UPI', value: 'upi' },
+  { label: 'Pay Later', value: 'pay_later' },
+];
 
-  const [billItems, setBillItems] = useState([
-    { id: 1, product_code: '', size: '', mrp: 0, quantity: 1, total: 0, availableQuantity: 0 }
-  ]);
-  const [discount, setDiscount] = useState({
-    type: 'percentage', // 'percentage' or 'amount'
-    value: 0
-  });
 
-  const [payment, setPayment] = useState({
-    upi: 0,
-    cash: 0,
-    payLater: 0
-  });
-  
-  const [products, setProducts] = useState([]);
-  const [productOptions, setProductOptions] = useState([]);
-  const [sizeOptions, setSizeOptions] = useState({});
-  const [inventoryQuantities, setInventoryQuantities] = useState({});
+// Get today's date string in IST (Asia/Kolkata)
+function getTodayISTDateStr() {
+  const now = new Date();
+  // Convert to IST by using toLocaleString and then parse back
+  const istString = now.toLocaleString('en-US', { timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit', day: '2-digit' });
+  // istString is MM/DD/YYYY, convert to YYYY-MM-DD
+  const [month, day, year] = istString.split('/');
+  return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+}
 
+export default function Sales() {
+  const [salesSummary, setSalesSummary] = useState({ cash: 0, upi: 0, pay_later: 0, total: 0 });
+  const [availableCash, setAvailableCash] = useState(0);
+  const [expenses, setExpenses] = useState([]);
+  const [expenseOptions, setExpenseOptions] = useState([]);
+  const [expenseForm, setExpenseForm] = useState({
+    expense: '',
+    amount: '',
+    payment_mode: 'cash',
+    isOther: false,
+    newExpense: '',
+  });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+
+  // Get today's date in IST for display
+  const todayISTDisplay = (() => {
+    const now = new Date();
+    return now.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'Asia/Kolkata' });
+  })();
+
+  // Fetch today's sales and expenses
   useEffect(() => {
-    let mounted = true;
-    
-    const fetchAndSetData = async () => {
-      try {
-        await fetchData();
-      } catch (error) {
-        console.error('Error in useEffect:', error);
-      }
-    };
-    
-    fetchAndSetData();
-    
-    return () => {
-      mounted = false;
-    };
+    fetchSalesAndExpenses();
   }, []);
 
-  // Calculate available quantity for a product and size, accounting for quantities already in bill
-  const calculateAvailableQuantity = (product_code, size, currentIndex) => {
-    if (!product_code || !size || !inventoryQuantities[product_code] || !inventoryQuantities[product_code][size]) {
-      return 0;
-    }
-    
-    // Get total inventory available for this product and size
-    const totalInventory = inventoryQuantities[product_code][size] || 0;
-    
-    // Calculate how much is already allocated in other bill items for the same product and size
-    const allocatedQuantity = billItems.reduce((sum, item, idx) => {
-      if (idx !== currentIndex && item.product_code === product_code && item.size === size) {
-        return sum + item.quantity;
-      }
-      return sum;
-    }, 0);
-    
-    // Return available quantity
-    return Math.max(0, totalInventory - allocatedQuantity);
-  };
 
-  // Handle changes in bill items
-  const handleBillItemChange = (index, field, value) => {
-    const newBillItems = [...billItems];
-    
-    // If product_code changes, update available sizes and reset size
-    if (field === 'product_code') {
-      newBillItems[index].product_code = value;
-      newBillItems[index].size = '';
-      newBillItems[index].mrp = 0;
-      newBillItems[index].quantity = 1;
-      newBillItems[index].total = 0;
-      newBillItems[index].availableQuantity = 0;
-    }
-
-    // If size changes, update MRP and available quantity
-    else if (field === 'size') {
-      newBillItems[index].size = value;
-      const product_code = newBillItems[index].product_code;
-      
-      if (product_code && value) {
-        // Find the product and its MRP
-        const product = products.find(p => p.code.toString() === product_code);
-        if (product) {
-          // Set MRP from product
-          newBillItems[index].mrp = product.mrp || 0;
-          
-          // Calculate how much inventory is available for this size
-          const availableQty = calculateAvailableQuantity(product_code, value, index);
-          newBillItems[index].availableQuantity = availableQty;
-          
-          // Ensure quantity doesn't exceed available inventory
-          if (newBillItems[index].quantity > availableQty) {
-            newBillItems[index].quantity = Math.max(1, availableQty);
-          }
-          
-          // Update total
-          newBillItems[index].total = newBillItems[index].mrp * newBillItems[index].quantity;
-        }
-      }
-    }
-
-    // If quantity changes, ensure it doesn't exceed available inventory and update total
-    else if (field === 'quantity') {
-      const product_code = newBillItems[index].product_code;
-      const size = newBillItems[index].size;
-      
-      if (product_code && size) {
-        // Calculate available quantity considering other bill items
-        const availableQty = calculateAvailableQuantity(product_code, size, index);
-        newBillItems[index].availableQuantity = availableQty; // Update available quantity display
-        
-        // Allow zero for clearing the field
-        if (value === 0 || value === '') {
-          newBillItems[index].quantity = 0;
-        } else {
-          // Limit quantity to available inventory
-          const limitedValue = Math.min(value, availableQty);
-          newBillItems[index].quantity = limitedValue >= 0 ? limitedValue : 0;
-        }
-        
-        newBillItems[index].total = newBillItems[index].mrp * newBillItems[index].quantity;
-      } else {
-        newBillItems[index].quantity = value;
-        newBillItems[index].total = newBillItems[index].mrp * value;
-      }
-      
-      // Update available quantities for any other bill items with the same product and size
-      newBillItems.forEach((item, idx) => {
-        if (idx !== index && item.product_code === product_code && item.size === size) {
-          item.availableQuantity = calculateAvailableQuantity(item.product_code, item.size, idx);
-          if (item.quantity > item.availableQuantity && item.availableQuantity > 0) {
-            item.quantity = item.availableQuantity;
-            item.total = item.mrp * item.quantity;
-          }
-        }
-      });
-    }
-
-    setBillItems(newBillItems);
-  };
-
-  // Get available sizes for a product code
-  const getAvailableSizes = (productCode) => {
-    return sizeOptions[productCode] || [];
-  };
-
-  // Calculate subtotal
-  const calculateSubtotal = () => {
-    return billItems.reduce((sum, item) => sum + item.total, 0);
-  };
-
-  // Calculate discount amount
-  const calculateDiscountAmount = () => {
-    const subtotal = calculateSubtotal();
-    if (discount.type === 'percentage') {
-      return (subtotal * discount.value) / 100;
-    }
-    return discount.value;
-  };
-
-  // Calculate total after discount
-  const calculateTotal = () => {
-    return calculateSubtotal() - calculateDiscountAmount();
-  };
-
-  // Calculate remaining balance
-  const calculateRemaining = () => {
-    const totalBill = calculateTotal();
-    const totalPaid = payment.upi + payment.cash + payment.payLater;
-    return Math.round((totalBill - totalPaid) * 100) / 100; // Round to 2 decimal places
-  };
-
-  // Add a new item to the bill
-  const addBillItem = () => {
-    setBillItems([
-      ...billItems, 
-      { 
-        id: billItems.length + 1, 
-        product_code: '', 
-        size: '', 
-        mrp: 0, 
-        quantity: 1, 
-        total: 0,
-        availableQuantity: 0
-      }
-    ]);
-  };
-
-  // Remove an item from the bill
-  const removeBillItem = (index) => {
-    if (billItems.length > 1) {
-      const newBillItems = [...billItems];
-      newBillItems.splice(index, 1);
-      setBillItems(newBillItems);
-    }
-  };
-
-  // Handle printing the bill
-  const handlePrintBill = async () => {
-    console.log('Print bill clicked', { customer }); // Debug log
-    
-    // If this is a new customer with both phone and name, save to database
-    if (!customer.isExisting && customer.phone.length === 10 && customer.name && customer.name.trim()) {
-      console.log('Attempting to save customer...'); // Debug log
-      
-      try {
-        // First, verify if customer already exists (double-check)
-        const { data: existingCustomer, error: checkError } = await supabase
-          .from('Customers')  // Updated to match exact table name
-          .select('*')
-          .eq('Phone Number', customer.phone)  // Updated to match exact column name
-          .maybeSingle();
-
-        if (checkError) {
-          console.error('Error checking existing customer:', checkError);
-          throw checkError;
-        }
-
-        // Only insert if customer doesn't exist
-        if (!existingCustomer) {
-          const { data, error } = await supabase
-            .from('Customers')  // Updated to match exact table name
-            .insert({
-              'Phone Number': customer.phone,  // Updated to match exact column name
-              'Name': customer.name.trim()     // Updated to match exact column name
-            });
-          
-          if (error) {
-            console.error('Supabase insert error:', error);
-            throw error;
-          }
-          
-          console.log('Customer saved successfully:', data);
-        } else {
-          console.log('Customer already exists:', existingCustomer);
-        }
-        
-        // Update customer state to reflect they are now an existing customer
-        setCustomer(prev => ({ ...prev, isExisting: true }));
-      } catch (error) {
-        console.error('Error saving customer:', error);
-        alert('Failed to save customer information: ' + error.message);
-        return; // Don't proceed with printing if saving failed
-      }
-    }
-    
-    // Print the bill
-    window.print();
-
-    // After printing, reset all form fields
-    setTimeout(() => {
-      // Reset customer information
-      setCustomer({
-        phone: '',
-        name: '',
-        isExisting: false
-      });
-
-      // Reset bill items to initial state with one empty row
-      setBillItems([
-        { 
-          id: 1, 
-          product_code: '', 
-          size: '', 
-          mrp: 0, 
-          quantity: 1, 
-          total: 0,
-          availableQuantity: 0
-        }
-      ]);
-
-      // Reset discount
-      setDiscount({
-        type: 'percentage',
-        value: 0
-      });
-
-      // Reset payment
-      setPayment({
-        upi: 0,
-        cash: 0,
-        payLater: 0
-      });
-    }, 100); // Small delay to ensure print dialog has opened
-  };
-
-  const fetchData = async () => {
+  async function fetchSalesAndExpenses() {
+    setLoading(true);
+    setError('');
     try {
-      const [inventoryData, productsData] = await Promise.all([
-        supabase.from('inventory').select('*'),
-        supabase.from('products').select('*')
-      ]);
+      const todayIST = getTodayISTDateStr();
+      // Fetch Orders for today (IST)
+      const { data: orders, error: orderErr } = await supabase
+        .from('Orders')
+        .select('order_amount, created_at, cash_amount, upi_amount, pay_later')
+        .gte('created_at', todayIST + 'T00:00:00+05:30')
+        .lte('created_at', todayIST + 'T23:59:59+05:30');
+      if (orderErr) throw orderErr;
 
-      const inventoryItems = inventoryData.data || [];
-      const productItems = productsData.data || [];
-      
-      setProducts(productItems);
-      
-      // Calculate inventory quantities by product code and size
-      const inventoryByProductAndSize = {};
-      const productCodesWithInventory = new Set();
-      const sizeOpts = {};
-      
-      // Process inventory data to calculate available quantities
-      inventoryItems.forEach(item => {
-        const product = productItems.find(p => p.id === item.product_id);
-        if (product) {
-          const productCode = product.code.toString();
-          const size = item.size;
-          const quantity = item.quantity || 0;
-          
-          // Initialize product entry if it doesn't exist
-          if (!inventoryByProductAndSize[productCode]) {
-            inventoryByProductAndSize[productCode] = {};
-          }
-          
-          // Initialize size entry if it doesn't exist
-          if (!inventoryByProductAndSize[productCode][size]) {
-            inventoryByProductAndSize[productCode][size] = 0;
-          }
-          
-          // Add quantity to running total
-          inventoryByProductAndSize[productCode][size] += quantity;
-          
-          // Track product codes with positive inventory
-          if (inventoryByProductAndSize[productCode][size] > 0) {
-            productCodesWithInventory.add(productCode);
-            
-            // Add size to available sizes for this product
-            if (!sizeOpts[productCode]) {
-              sizeOpts[productCode] = [];
-            }
-            if (size && !sizeOpts[productCode].includes(size)) {
-              sizeOpts[productCode].push(size);
-            }
-          }
+      // Calculate total sales and payment mode breakdown
+      let totalOrderAmount = 0;
+      let cash = 0, upi = 0, pay_later = 0;
+      const seen = new Set();
+      (orders || []).forEach(o => {
+        const key = o.order_no || o.created_at;
+        if (!seen.has(key)) {
+          totalOrderAmount += o.order_amount || 0;
+          // Payment mode breakdown (if fields exist)
+          if (o.cash_amount) cash += o.cash_amount;
+          if (o.upi_amount) upi += o.upi_amount;
+          if (o.pay_later) pay_later += o.pay_later;
+          seen.add(key);
         }
       });
-      
-      // Filter out sizes with zero or negative inventory
-      Object.keys(sizeOpts).forEach(productCode => {
-        sizeOpts[productCode] = sizeOpts[productCode].filter(size => 
-          inventoryByProductAndSize[productCode][size] > 0
-        );
-      });
-      
-      // Create product options for dropdown with proper labels
-      const productOpts = Array.from(productCodesWithInventory)
-        .filter(code => {
-          // Check if any size has positive inventory
-          const sizes = Object.keys(inventoryByProductAndSize[code] || {});
-          return sizes.some(size => inventoryByProductAndSize[code][size] > 0);
-        })
-        .map(code => ({ 
-          label: code,
-          value: code 
-        }));
-      
-      setProductOptions(productOpts);
-      setSizeOptions(sizeOpts);
-      setInventoryQuantities(inventoryByProductAndSize);
-    } catch (error) {
-      console.error('Error fetching data:', error);
+      setSalesSummary({ totalOrderAmount, cash, upi, pay_later });
+
+      // Fetch all expenses for today (IST)
+      const { data: exp, error: expErr } = await supabase
+        .from('expense')
+        .select('*')
+        .gte('created_at', todayIST + 'T00:00:00+05:30')
+        .lte('created_at', todayIST + 'T23:59:59+05:30');
+      if (expErr) throw expErr;
+      setExpenses(exp || []);
+
+      // Fetch all unique expense names for dropdown (from 'expense' column only)
+      const { data: allExp, error: allExpErr } = await supabase
+        .from('expense')
+        .select('expense')
+        .neq('expense', null);
+      if (allExpErr) throw allExpErr;
+      // Only use unique, non-empty values from the 'expense' column
+      const uniqueOptions = Array.from(new Set((allExp || []).map(e => (e.expense || '').trim()).filter(e => e))).map(e => ({ label: e, value: e }));
+      setExpenseOptions(uniqueOptions);
+
+  // Calculate available cash: cash from orders - cash expenses
+  // Sum cash_amount only once per unique order (by order_no or created_at)
+  const seenCash = new Set();
+  const cashFromOrders = (orders || []).reduce((sum, o) => {
+    const key = o.order_no || o.created_at;
+    if (!seenCash.has(key)) {
+      seenCash.add(key);
+      return sum + (o.cash_amount || 0);
     }
-  };
+    return sum;
+  }, 0);
+  const cashExpenses = (exp || []).filter(e => (e['payment_mode'] || e['payment mode']) === 'cash').reduce((sum, e) => sum + (e.amount || 0), 0);
+  setAvailableCash(cashFromOrders - cashExpenses);
+    } catch (err) {
+      setError('Failed to fetch data: ' + err.message);
+    } finally {
+      setLoading(false);
+    }
+  }
 
-  // Check for existing customer when phone number is entered
-  const checkExistingCustomer = async (phone) => {
-    console.log('Checking phone:', phone); // Debug log
-    
-    if (phone.length === 10) {
-      try {
-        console.log('Querying Supabase for phone:', phone); // Debug log
-        const { data, error } = await supabase
-          .from('Customers')
-          .select('Name')
-          .eq('Phone Number', phone)
-          .single();
-        
-        console.log('Supabase response:', { data, error }); // Debug log
-        
-        if (error && error.code !== 'PGRST116') { // PGRST116 is the "not found" error code
-          console.error('Supabase error:', error);
-          return;
-        }
-        
-        if (data && data.Name) {
-          console.log('Found existing customer:', data); // Debug log
-          setCustomer(prev => ({ ...prev, name: data.Name || '', isExisting: true }));
-        } else {
-          console.log('No existing customer found'); // Debug log
-          setCustomer(prev => ({ ...prev, name: '', isExisting: false }));
-        }
-      } catch (error) {
-        console.error('Error checking customer:', error);
-      }
+  // Handle expense form changes
+  function handleExpenseChange(field, value) {
+    if (field === 'expense') {
+      setExpenseForm(f => ({ ...f, expense: value, isOther: value === 'other', newExpense: '' }));
     } else {
-      // Reset the customer state if phone number is incomplete
-      setCustomer(prev => ({ ...prev, name: '', isExisting: false }));
+      setExpenseForm(f => ({ ...f, [field]: value }));
     }
-  };
+  }
+
+  // Add new expense
+  async function handleAddExpense(e) {
+    e.preventDefault();
+    setError('');
+    setSuccess('');
+    let expenseName = '';
+    if (expenseForm.isOther) {
+      expenseName = expenseForm.newExpense.trim();
+    } else {
+      // Use the selected dropdown value as expense name
+      expenseName = expenseForm.expense;
+    }
+    if (!expenseName) return setError('Expense name required');
+    if (!expenseForm.amount || isNaN(expenseForm.amount) || Number(expenseForm.amount) <= 0) return setError('Valid amount required');
+    if (!expenseForm.payment_mode) return setError('Select payment mode');
+    setLoading(true);
+    try {
+      const { error: insertErr } = await supabase.from('expense').insert({
+        expense: expenseName,
+        amount: Number(expenseForm.amount),
+        ['payment mode']: expenseForm.payment_mode,
+      });
+      if (insertErr) throw insertErr;
+      setSuccess('Expense added!');
+      setExpenseForm({ expense: '', amount: '', payment_mode: 'cash', isOther: false, newExpense: '' });
+      await fetchSalesAndExpenses();
+    } catch (err) {
+      setError('Failed to add expense: ' + err.message);
+    } finally {
+      setLoading(false);
+    }
+  }
 
   return (
-    <div className="p-6 pb-24">
-      <div className="bg-white rounded-lg shadow-md p-6">
-        <div className="space-y-6">
-          <h1 className="text-2xl font-bold">Create Bill</h1>
-          
-          {/* Customer Information */}
-          <div className="bg-gray-50 p-4 rounded-md">
-            <h2 className="text-lg font-semibold mb-3">Customer Information</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium mb-1">Phone Number</label>
-                <input
-                  type="text"
-                  pattern="[0-9]*"
-                  maxLength={10}
-                  className="w-full p-2 border rounded-md"
-                  value={customer.phone}
-                  onChange={(e) => {
-                    const value = e.target.value.replace(/\D/g, '');
-                    setCustomer(prev => ({...prev, phone: value}));
-                    checkExistingCustomer(value);
-                  }}
-                  placeholder="Enter 10-digit phone number"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">Name</label>
-                <input
-                  type="text"
-                  className={`w-full p-2 border rounded-md ${customer.isExisting ? 'bg-gray-100' : ''}`}
-                  value={customer.name}
-                  onChange={(e) => !customer.isExisting && setCustomer({...customer, name: e.target.value})}
-                  disabled={customer.isExisting}
-                  placeholder="Enter customer name"
-                />
-              </div>
+    <div className="p-6 max-w-2xl mx-auto">
+      <h1 className="text-2xl font-bold mb-4">Sale: {todayISTDisplay}</h1>
+      {error && <div className="bg-red-100 text-red-700 p-2 mb-2 rounded">{error}</div>}
+      {success && <div className="bg-green-100 text-green-700 p-2 mb-2 rounded">{success}</div>}
+      <div className="bg-white rounded shadow p-4 mb-6">
+    {/* Removed 'Today's Sales' section title as requested */}
+        <div className="grid grid-cols-2 gap-4 mb-2">
+          <div className="p-2 bg-yellow-50 rounded col-span-2">
+            <div className="text-sm text-gray-500">Total Sales:</div>
+            <div className="text-xl font-bold">₹{(salesSummary.totalOrderAmount || 0).toFixed(2)}</div>
+            <div className="flex flex-wrap gap-4 mt-2">
+              <span className="text-sm text-gray-700">Cash: <span className="font-semibold">₹{(salesSummary.cash || 0).toFixed(2)}</span></span>
+              <span className="text-sm text-gray-700">UPI: <span className="font-semibold">₹{(salesSummary.upi || 0).toFixed(2)}</span></span>
+              <span className="text-sm text-gray-700">Pay Later: <span className="font-semibold">₹{(salesSummary.pay_later || 0).toFixed(2)}</span></span>
             </div>
           </div>
-
-          {/* Bill Items */}
-          <div className="overflow-x-auto">
-            <table className="w-full border-collapse">
-              <thead>
-                <tr className="bg-gray-100">
-                  <th className="p-2 text-left font-medium border">Product</th>
-                  <th className="p-2 text-left font-medium border">Size</th>
-                  <th className="p-2 text-left font-medium border">MRP (₹)</th>
-                  <th className="p-2 text-left font-medium border">Quantity</th>
-                  <th className="p-2 text-left font-medium border">Available</th>
-                  <th className="p-2 text-left font-medium border">Total (₹)</th>
-                  <th className="p-2 text-left font-medium border">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {billItems.map((item, index) => (
-                  <tr key={item.id} className={index % 2 === 0 ? "bg-white" : "bg-gray-50"}>
-                    <td className="p-2 border">
-                      <SearchableDropdown
-                        value={item.product_code ? productOptions.find(p => p.value === item.product_code) : null}
-                        onChange={(selected) => {
-                          const value = typeof selected === 'string' ? selected : (selected ? selected.value : '');
-                          handleBillItemChange(index, 'product_code', value);
-                        }}
-                        options={productOptions}
-                        placeholder="Select product"
-                        className="w-full"
-                      />
-                    </td>
-                    <td className="p-2 border">
-                      <SearchableDropdown
-                        value={item.size ? { label: item.size.split(' ')[0], value: item.size.split(' ')[0] } : null}
-                        onChange={(selected) => {
-                          const value = typeof selected === 'string' ? selected : (selected ? selected.value : '');
-                          handleBillItemChange(index, 'size', value);
-                        }}
-                        options={getAvailableSizes(item.product_code).map(size => ({ 
-                          label: size, 
-                          value: size 
-                        }))}
-                        placeholder="Select size"
-                        className="w-full"
-                        disabled={!item.product_code}
-                      />
-                    </td>
-                    <td className="p-2 border">
-                      <div className="text-center py-2">₹{item.mrp}</div>
-                    </td>
-                    <td className="p-2 border">
-                      <input
-                        type="number"
-                        min="0"
-                        max={item.availableQuantity || 1}
-                        className="w-full p-2 border rounded no-spinner"
-                        value={item.quantity}
-                        onChange={(e) => {
-                          const value = e.target.value === '' ? 0 : parseInt(e.target.value);
-                          handleBillItemChange(index, 'quantity', value);
-                        }}
-                      />
-                    </td>
-                    <td className="p-2 border text-center text-sm text-gray-600">
-                      {item.availableQuantity > 0 ? item.availableQuantity : '-'}
-                    </td>
-                    <td className="p-2 border">
-                      {item.total.toFixed(2)}
-                    </td>
-                    <td className="p-2 border">
-                      <button
-                        onClick={() => removeBillItem(index)}
-                        className="text-red-500 hover:text-red-700"
-                        disabled={billItems.length === 1}
-                      >
-                        Remove
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          <button
-            onClick={addBillItem}
-            className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
-          >
-            Add Item
-          </button>
-          
-          {/* Discount Options */}
-          <div className="bg-gray-50 p-4 rounded-md">
-            <h2 className="text-lg font-semibold mb-3">Discount</h2>
-            <div className="flex items-center gap-4 flex-wrap">
-              <div className="flex items-center">
-                <input
-                  type="radio"
-                  id="percentage"
-                  name="discountType"
-                  checked={discount.type === 'percentage'}
-                  onChange={() => setDiscount({...discount, type: 'percentage'})}
-                  className="mr-2"
-                />
-                <label htmlFor="percentage">Percentage (%)</label>
-              </div>
-              <div className="flex items-center">
-                <input
-                  type="radio"
-                  id="amount"
-                  name="discountType"
-                  checked={discount.type === 'amount'}
-                  onChange={() => setDiscount({...discount, type: 'amount'})}
-                  className="mr-2"
-                />
-                <label htmlFor="amount">Amount (₹)</label>
-              </div>
-              <input
-                type="number"
-                min="0"
-                className="p-2 border rounded-md w-32"
-                value={discount.value || ''}
-                onChange={(e) => {
-                  const value = e.target.value ? parseFloat(e.target.value) : 0;
-                  setDiscount({...discount, value: value});
-                }}
-              />
-            </div>
-          </div>
-          
-          {/* Bill Summary */}
-          <div className="bg-gray-50 p-4 rounded-md">
-            <h2 className="text-lg font-semibold mb-3">Bill Summary</h2>
-            <div className="flex justify-between mb-2">
-              <span>Subtotal:</span>
-              <span>₹{calculateSubtotal().toFixed(2)}</span>
-            </div>
-            <div className="flex justify-between mb-2">
-              <span>Discount ({
-                discount.type === 'percentage' 
-                  ? `${discount.value}%` 
-                  : calculateSubtotal() > 0
-                    ? `${((discount.value / calculateSubtotal()) * 100).toFixed(2)}%`
-                    : '0%'
-              }):</span>
-              <span>₹{calculateDiscountAmount().toFixed(2)}</span>
-            </div>
-            <div className="flex justify-between font-bold text-lg">
-              <span>Total:</span>
-              <span>₹{calculateTotal().toFixed(2)}</span>
-            </div>
-          </div>
-
-          {/* Payment Mode Section */}
-          <div className="bg-gray-50 p-4 rounded-md">
-            <h2 className="text-lg font-semibold mb-3">Payment Mode</h2>
-            <div className="space-y-2">
-              <div className="flex items-center gap-2">
-                <div className="flex-1">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">UPI Amount</label>
-                  <input
-                    type="number"
-                    min="0"
-                    className="w-full p-2 border rounded-md"
-                    value={payment.upi || ''}
-                    onChange={(e) => {
-                      const value = e.target.value ? parseFloat(e.target.value) : 0;
-                      setPayment({ ...payment, upi: value });
-                    }}
-                    placeholder="Enter UPI amount"
-                  />
-                </div>
-                <div className="flex-1">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Cash Amount</label>
-                  <input
-                    type="number"
-                    min="0"
-                    className="w-full p-2 border rounded-md"
-                    value={payment.cash || ''}
-                    onChange={(e) => {
-                      const value = e.target.value ? parseFloat(e.target.value) : 0;
-                      setPayment({ ...payment, cash: value });
-                    }}
-                    placeholder="Enter cash amount"
-                  />
-                </div>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Pay Later Amount</label>
-                <input
-                  type="number"
-                  min="0"
-                  className="w-full p-2 border rounded-md"
-                  value={payment.payLater || ''}
-                  onChange={(e) => {
-                    const value = e.target.value ? parseFloat(e.target.value) : 0;
-                    setPayment({ ...payment, payLater: value });
-                  }}
-                  placeholder="Enter pay later amount"
-                />
-              </div>
-            </div>
-
-            <div className="mt-4 p-3 bg-white rounded-md">
-              <div className="flex justify-between items-center text-sm">
-                <span>Total Bill Amount:</span>
-                <span>₹{calculateTotal().toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between items-center text-sm mt-2">
-                <span>Total Paid (UPI + Cash):</span>
-                <span>₹{(payment.upi + payment.cash).toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between items-center text-sm mt-2">
-                <span>Pay Later Amount:</span>
-                <span>₹{payment.payLater.toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between items-center font-bold mt-2 pt-2 border-t">
-                <span>Remaining Balance:</span>
-                <span className={calculateRemaining() === 0 ? 'text-green-600' : 'text-red-600'}>
-                  ₹{calculateRemaining().toFixed(2)}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          <button
-            onClick={handlePrintBill}
-            className="w-full bg-blue-600 text-white py-2 px-4 rounded hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
-            disabled={
-              calculateRemaining() !== 0 || 
-              !customer.phone || 
-              customer.phone.length !== 10 || 
-              !customer.name.trim() ||
-              !billItems.some(item => item.product_code && item.size && item.quantity > 0)
-            }
-            title={
-              !customer.phone || customer.phone.length !== 10 
-                ? "Please enter a valid 10-digit phone number" 
-                : !customer.name.trim() 
-                  ? "Please enter customer name"
-                  : !billItems.some(item => item.product_code && item.size && item.quantity > 0)
-                    ? "Please select at least one product with size and quantity"
-                    : calculateRemaining() !== 0 
-                      ? "Please ensure payment equals total bill amount"
-                      : ""
-            }
-          >
-            Print Bill
-          </button>
+        </div>
+        <div className="mt-2 p-2 bg-green-50 rounded">
+          <div className="text-sm text-gray-500">Available Cash</div>
+          <div className="text-xl font-bold text-green-700">₹{availableCash.toFixed(2)}</div>
         </div>
       </div>
-      
-      {/* Print-specific styles */}
-      <style type="text/css" media="print">{`
-        @media print {
-          body * {
-            visibility: hidden;
-          }
-          .bg-white.rounded-lg.shadow-md.p-6, .bg-white.rounded-lg.shadow-md.p-6 * {
-            visibility: visible;
-          }
-          .bg-white.rounded-lg.shadow-md.p-6 {
-            position: absolute;
-            left: 0;
-            top: 0;
-            width: 100%;
-            background-color: white !important;
-            color: black !important;
-          }
-          button, .actions-column {
-            display: none !important;
-          }
-        }
-      `}</style>
+
+      <div className="bg-white rounded shadow p-4 mb-6">
+        <h2 className="text-lg font-semibold mb-2">Add Expense</h2>
+        <form onSubmit={handleAddExpense} className="space-y-3">
+          <div>
+            <label className="block text-sm font-medium mb-1">Expense Name</label>
+            <SearchableDropdown
+              value={expenseForm.expense ? { label: expenseForm.expense, value: expenseForm.expense } : null}
+              onChange={opt => handleExpenseChange('expense', opt ? opt.value : (typeof opt === 'string' ? opt : ''))}
+              options={expenseOptions}
+              placeholder="Type or select expense"
+              allowCustomInput={true}
+              onInputChange={val => handleExpenseChange('expense', val)}
+              className="w-full"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">Amount</label>
+            <input
+              type="number"
+              min="0"
+              className="w-full p-2 border rounded"
+              value={expenseForm.amount}
+              onChange={e => handleExpenseChange('amount', e.target.value)}
+              placeholder="Enter amount"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">Payment Mode</label>
+            <select
+              className="w-full p-2 border rounded"
+              value={expenseForm.payment_mode}
+              onChange={e => handleExpenseChange('payment_mode', e.target.value)}
+            >
+              {PAYMENT_MODES.map(pm => (
+                <option key={pm.value} value={pm.value}>{pm.label}</option>
+              ))}
+            </select>
+          </div>
+          <button
+            type="submit"
+            className="w-full bg-blue-600 text-white py-2 px-4 rounded hover:bg-blue-700 disabled:bg-gray-400"
+            disabled={
+              loading ||
+              !expenseForm.expense ||
+              !expenseForm.amount ||
+              isNaN(expenseForm.amount) ||
+              Number(expenseForm.amount) <= 0 ||
+              !expenseForm.payment_mode
+            }
+          >
+            {loading ? 'Adding...' : 'Add Expense'}
+          </button>
+        </form>
+      </div>
+
+      <div className="bg-white rounded shadow p-4">
+        <h2 className="text-lg font-semibold mb-2">Today's Expenses</h2>
+        {expenses.length === 0 ? (
+          <div className="text-gray-500">No expenses added today.</div>
+        ) : (
+          <table className="w-full text-sm mt-2">
+            <thead>
+              <tr className="bg-gray-100">
+                <th className="p-2 text-left">Time</th>
+                <th className="p-2 text-left">Expense</th>
+                <th className="p-2 text-left">Amount</th>
+                <th className="p-2 text-left">Payment Mode</th>
+              </tr>
+            </thead>
+            <tbody>
+              {expenses.map((e, i) => (
+                <tr key={i} className={i % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                  <td className="p-2">{new Date(e.created_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'Asia/Kolkata' })}</td>
+                  <td className="p-2">{e.expense}</td>
+                  <td className="p-2">₹{e.amount}</td>
+                  <td className="p-2 capitalize">{(e['payment_mode'] || e['payment mode'] || '').replace('_', ' ')}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
     </div>
   );
 }

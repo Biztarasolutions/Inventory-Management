@@ -141,7 +141,9 @@ export function AddStocks() {
       }
     });
 
-    setFilteredInventoryHistory(sorted);
+  // Hide 'sold' items from the inventory history
+  const notSold = sorted.filter(item => item.action !== 'sold');
+  setFilteredInventoryHistory(notSold);
   }, [inventoryHistory, products, suppliers, brands, historyFilters, historySortConfig]);
 
   // Reset history filters

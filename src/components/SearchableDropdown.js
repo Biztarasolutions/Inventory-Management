@@ -7,10 +7,12 @@ const SearchableDropdown = ({
   onChange, 
   options = [], 
   placeholder = "Select...", 
-  className = "" 
+  className = "",
+  allowCustomInput = false,
+  onInputChange
 }) => {
   const [isOpen, setIsOpen] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm, setSearchTerm] = useState(value ? (typeof value === 'object' ? value.value : value) : '');
   const containerRef = useRef(null);
   const inputRef = useRef(null);
   const { refs, floatingStyles } = useFloating({
@@ -23,14 +25,16 @@ const SearchableDropdown = ({
   const handleSelect = useCallback((selectedOption) => {
     onChange(selectedOption);
     setIsOpen(false);
-    setSearchTerm('');
+    setSearchTerm(selectedOption && typeof selectedOption === 'object' ? selectedOption.value : selectedOption || '');
   }, [onChange]);
 
   const handleInputClick = useCallback(() => {
     setIsOpen(prev => !prev);
-    if (inputRef.current) {
-      inputRef.current.focus();
-    }
+    setTimeout(() => {
+      if (inputRef.current) {
+        inputRef.current.focus();
+      }
+    }, 0);
   }, []);
 
   // Outside click handling with stable ref
@@ -56,6 +60,12 @@ const SearchableDropdown = ({
     }
     return false;
   });
+
+  // If custom input is allowed and searchTerm is not in options, add it as a selectable option
+  let customOption = null;
+  if (allowCustomInput && searchTerm && !filteredOptions.some(opt => (typeof opt === 'string' ? opt : opt.value) === searchTerm)) {
+    customOption = { label: searchTerm, value: searchTerm };
+  }
 
   return (
     <div ref={containerRef} className={`relative ${className}`}>
@@ -101,13 +111,26 @@ const SearchableDropdown = ({
               type="text"
               placeholder="Search..."
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={(e) => {
+                setSearchTerm(e.target.value);
+                if (allowCustomInput && onInputChange) onInputChange(e.target.value);
+              }}
               className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
             />
           </div>
 
           {/* Options List */}
           <div className="max-h-48 overflow-y-auto" style={{ overflowX: 'visible' }}>
+            {customOption && (
+              <div
+                key={customOption.value}
+                onMouseDown={() => handleSelect(customOption)}
+                data-dropdown-option
+                className="px-3 py-2 text-sm hover:bg-blue-100 cursor-pointer text-blue-700 whitespace-nowrap font-semibold"
+              >
+                Add "{customOption.value}"
+              </div>
+            )}
             {filteredOptions.length > 0 ? (
               filteredOptions.map((option, index) => (
                 <div
@@ -125,9 +148,7 @@ const SearchableDropdown = ({
                 </div>
               ))
             ) : (
-              <div className="px-3 py-2 text-sm text-gray-500 text-center">
-                No options found
-              </div>
+              !customOption && <div className="px-3 py-2 text-sm text-gray-500 text-center">No options found</div>
             )}
           </div>
         </div>,
