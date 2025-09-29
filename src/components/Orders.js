@@ -41,10 +41,15 @@ const Orders = () => {
   };
 
   const calculateOrderDiscount = (order) => {
-    if (order.order_discount_type === 'fixed') {
+    if (order.order_discount_type === 'fixed' || order.order_discount_type === 'amount') {
       return order.order_discount || 0;
     } else { // percentage
-      return ((order.order_amount * (order.order_discount || 0)) / 100);
+      // (total mrp - item discount) * order_discount / 100
+      const totalMrp = order.mrp * order.quantity;
+      const itemDiscount = (order.discount_type === 'fixed')
+        ? (order.discount || 0)
+        : ((order.mrp * (order.discount || 0)) / 100);
+      return ((totalMrp - itemDiscount) * (order.order_discount || 0)) / 100;
     }
   };
 
