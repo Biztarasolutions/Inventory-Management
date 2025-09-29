@@ -146,7 +146,7 @@ export default function Sales() {
       const { error: insertErr } = await supabase.from('expense').insert({
         expense: expenseName,
         amount: Number(expenseForm.amount),
-        ['payment mode']: expenseForm.payment_mode,
+        payment_mode: expenseForm.payment_mode,
       });
       if (insertErr) throw insertErr;
       setSuccess('Expense added!');
