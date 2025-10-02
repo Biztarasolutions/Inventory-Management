@@ -311,26 +311,28 @@ export default function Sales() {
         {expenses.length === 0 ? (
           <div className="text-gray-500">No expenses added today.</div>
         ) : (
-          <table className="w-full text-sm mt-2">
-            <thead>
-              <tr className="bg-gray-100">
-                <th className="px-1 py-1 text-left">Time</th>
-                <th className="px-1 py-1 text-left">Expense</th>
-                <th className="px-1 py-1 text-left">Amount</th>
-                <th className="px-1 py-1 text-left">Payment Mode</th>
-              </tr>
-            </thead>
-            <tbody>
-              {expenses.map((e, i) => (
-                <tr key={i} className={i % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                  <td className="px-1 py-1">{new Date(e.created_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'Asia/Kolkata' })}</td>
-                  <td className="px-1 py-1">{e.expense}</td>
-                  <td className="px-1 py-1">₹{e.amount}</td>
-                  <td className="px-1 py-1 capitalize">{(e['payment_mode'] || e['payment mode'] || '').replace('_', ' ')}</td>
+          <div className="overflow-x-auto">
+            <table className="min-w-max text-sm mt-2">
+              <thead>
+                <tr className="bg-gray-100">
+                  <th className="px-0.5 py-1 text-left">Time</th>
+                  <th className="px-0.5 py-1 text-left">Expense</th>
+                  <th className="px-0.5 py-1 text-left">Amount</th>
+                  <th className="px-0.5 py-1 text-left">Payment Mode</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {expenses.map((e, i) => (
+                  <tr key={i} className={i % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                    <td className="px-0.5 py-1">{new Date(e.created_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'Asia/Kolkata' })}</td>
+                    <td className="px-0.5 py-1">{e.expense}</td>
+                    <td className="px-0.5 py-1">₹{e.amount}</td>
+                    <td className="px-0.5 py-1 capitalize">{(e['payment_mode'] || e['payment mode'] || '').replace('_', ' ')}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
     </div>
