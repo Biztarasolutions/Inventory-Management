@@ -48,24 +48,27 @@ export default function Sales() {
   }, []);
 
 
+  const [orders, setOrders] = useState([]);
+
   async function fetchSalesAndExpenses() {
     setLoading(true);
     setError('');
     try {
       const todayIST = getTodayISTDateStr();
       // Fetch Orders for today (IST)
-      const { data: orders, error: orderErr } = await supabase
+      const { data: ordersData, error: orderErr } = await supabase
         .from('Orders')
         .select('order_no, order_amount, created_at, cash_amount, upi_amount, pay_later')
         .gte('created_at', todayIST + 'T00:00:00+05:30')
         .lte('created_at', todayIST + 'T23:59:59+05:30');
       if (orderErr) throw orderErr;
+      setOrders(ordersData || []);
 
       // Calculate total sales, payment mode breakdown, and distinct order count
       let totalOrderAmount = 0;
       let cash = 0, upi = 0, pay_later = 0;
       const seenOrderNos = new Set();
-      (orders || []).forEach(o => {
+      (ordersData || []).forEach(o => {
         const key = o.order_no || o.created_at;
         if (!seenOrderNos.has(key)) {
           totalOrderAmount += o.order_amount || 0;
@@ -97,17 +100,15 @@ export default function Sales() {
       const uniqueOptions = Array.from(new Set((allExp || []).map(e => (e.expense || '').trim()).filter(e => e))).map(e => ({ label: e, value: e }));
       setExpenseOptions(uniqueOptions);
 
-  // Calculate available cash: cash from orders - cash expenses
-  // Sum cash_amount only once per unique order (by order_no or created_at)
-  const seenCash = new Set();
-  const cashFromOrders = (orders || []).reduce((sum, o) => {
+  // Calculate available cash for current IST date only, using freshly fetched data
+  const uniqueOrderCash = {};
+  (ordersData || []).forEach(o => {
     const key = o.order_no || o.created_at;
-    if (!seenCash.has(key)) {
-      seenCash.add(key);
-      return sum + (o.cash_amount || 0);
+    if (!(key in uniqueOrderCash)) {
+      uniqueOrderCash[key] = o.cash_amount || 0;
     }
-    return sum;
-  }, 0);
+  });
+  const cashFromOrders = Object.values(uniqueOrderCash).reduce((sum, amt) => sum + amt, 0);
   const cashExpenses = (exp || []).filter(e => (e['payment_mode'] || e['payment mode']) === 'cash').reduce((sum, e) => sum + (e.amount || 0), 0);
   setAvailableCash(cashFromOrders - cashExpenses);
     } catch (err) {
@@ -161,7 +162,20 @@ export default function Sales() {
 
   return (
     <div className="p-6 max-w-2xl mx-auto">
-      <h1 className="text-2xl font-bold mb-4">Sale: {todayISTDisplay}</h1>
+      {/* Minimal Modern Sale Header (Second Option) */}
+      <div className="mb-6">
+        <div className="flex items-center justify-between border-b pb-3 mb-2">
+          <div className="flex items-center gap-2">
+            <span className="text-2xl font-bold text-green-700">Sale</span>
+            <span className="text-lg font-semibold text-gray-600">|</span>
+            <span className="text-lg font-bold text-gray-800">{todayISTDisplay}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-gray-500">Cash in Drawer</span>
+            <span className="text-lg font-bold text-green-700">₹{Math.round(availableCash).toLocaleString('en-IN')}</span>
+          </div>
+        </div>
+      </div>
       {error && <div className="bg-red-100 text-red-700 p-2 mb-2 rounded">{error}</div>}
       {success && <div className="bg-green-100 text-green-700 p-2 mb-2 rounded">{success}</div>}
       <div className="bg-white rounded shadow p-4 mb-6">
@@ -212,6 +226,7 @@ export default function Sales() {
             </div>
             <div className="text-2xl font-bold text-blue-700">{(salesSummary.orderCount || 0).toLocaleString('en-IN')}</div>
             <div className="text-sm text-blue-700 mt-1">Orders</div>
+            <div className="text-xs text-gray-500 mt-1">{orders && orders.length > 0 ? new Date(orders[orders.length-1].created_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'Asia/Kolkata' }) : '--'}</div>
           </div>
           {/* Returns Card - Undo Arrow */}
           <div className="flex flex-col items-center justify-center bg-yellow-50 rounded-lg shadow p-4">
@@ -228,21 +243,11 @@ export default function Sales() {
             <div className="mb-2 text-red-600 text-2xl">💸</div>
             <div className="text-2xl font-bold text-red-700">₹{Math.round(expenses.reduce((sum, e) => sum + (e.amount || 0), 0)).toLocaleString('en-IN')}</div>
             <div className="text-sm text-red-700 mt-1">Expense</div>
+            <div className="text-xs text-gray-500 mt-1">{expenses && expenses.length > 0 ? new Date(expenses[expenses.length-1].created_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'Asia/Kolkata' }) : '--'}</div>
           </div>
         </div>
         {/* Removed duplicate Cash, UPI, Pay Later breakdown below cards */}
-        <div className="mt-2 p-2 bg-green-50 rounded flex items-center gap-2">
-          <span className="text-sm text-gray-500 flex items-center gap-1">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
-              <rect x="3" y="7" width="18" height="10" rx="2" fill="#a7f3d0" stroke="#059669" strokeWidth="2" />
-              <rect x="7" y="13" width="10" height="3" rx="1" fill="#059669" />
-              <rect x="9" y="15" width="2" height="1" rx="0.5" fill="#fff" />
-              <rect x="13" y="15" width="2" height="1" rx="0.5" fill="#fff" />
-            </svg>
-            Cash in Drawer
-          </span>
-          <div className="text-xl font-bold text-green-700">₹{Math.round(availableCash).toLocaleString('en-IN')}</div>
-        </div>
+        {/* Removed duplicate Cash in Drawer section below cards */}
       </div>
 
       <div className="bg-white rounded shadow p-4 mb-6">
