@@ -314,19 +314,19 @@ export default function Sales() {
           <table className="w-full text-sm mt-2">
             <thead>
               <tr className="bg-gray-100">
-                <th className="p-2 text-left">Time</th>
-                <th className="p-2 text-left">Expense</th>
-                <th className="p-2 text-left">Amount</th>
-                <th className="p-2 text-left">Payment Mode</th>
+                <th className="px-1 py-1 text-left">Time</th>
+                <th className="px-1 py-1 text-left">Expense</th>
+                <th className="px-1 py-1 text-left">Amount</th>
+                <th className="px-1 py-1 text-left">Payment Mode</th>
               </tr>
             </thead>
             <tbody>
               {expenses.map((e, i) => (
                 <tr key={i} className={i % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                  <td className="p-2">{new Date(e.created_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'Asia/Kolkata' })}</td>
-                  <td className="p-2">{e.expense}</td>
-                  <td className="p-2">₹{e.amount}</td>
-                  <td className="p-2 capitalize">{(e['payment_mode'] || e['payment mode'] || '').replace('_', ' ')}</td>
+                  <td className="px-1 py-1">{new Date(e.created_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'Asia/Kolkata' })}</td>
+                  <td className="px-1 py-1">{e.expense}</td>
+                  <td className="px-1 py-1">₹{e.amount}</td>
+                  <td className="px-1 py-1 capitalize">{(e['payment_mode'] || e['payment mode'] || '').replace('_', ' ')}</td>
                 </tr>
               ))}
             </tbody>
