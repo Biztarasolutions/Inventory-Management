@@ -179,7 +179,8 @@ export default function Sales() {
       {error && <div className="bg-red-100 text-red-700 p-2 mb-2 rounded">{error}</div>}
       {success && <div className="bg-green-100 text-green-700 p-2 mb-2 rounded">{success}</div>}
       <div className="bg-white rounded shadow p-4 mb-6">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+        {/* Make card grid horizontally scrollable on mobile, prevent blank space */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4 overflow-x-auto snap-x" style={{ WebkitOverflowScrolling: 'touch' }}>
           {/* Sales Card - Rupee symbol with payment breakdown */}
           <div className="flex flex-col items-center justify-center bg-green-50 rounded-lg shadow p-4">
             <div className="mb-2 text-green-600">
