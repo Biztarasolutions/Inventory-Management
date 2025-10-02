@@ -738,7 +738,7 @@ const CreateBill = () => {
           </button>
 
           <div className="bg-gray-50 p-4 rounded-md mt-4">
-            <h2 className="text-lg font-semibold mb-3">Additional Discount</h2>
+            <h2 className="text-lg font-semibold mb-3">Order Discount</h2>
             <div className="flex items-center gap-4 flex-wrap">
               <div className="flex items-center">
                 <input

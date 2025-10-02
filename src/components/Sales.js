@@ -56,27 +56,27 @@ export default function Sales() {
       // Fetch Orders for today (IST)
       const { data: orders, error: orderErr } = await supabase
         .from('Orders')
-        .select('order_amount, created_at, cash_amount, upi_amount, pay_later')
+        .select('order_no, order_amount, created_at, cash_amount, upi_amount, pay_later')
         .gte('created_at', todayIST + 'T00:00:00+05:30')
         .lte('created_at', todayIST + 'T23:59:59+05:30');
       if (orderErr) throw orderErr;
 
-      // Calculate total sales and payment mode breakdown
+      // Calculate total sales, payment mode breakdown, and distinct order count
       let totalOrderAmount = 0;
       let cash = 0, upi = 0, pay_later = 0;
-      const seen = new Set();
+      const seenOrderNos = new Set();
       (orders || []).forEach(o => {
         const key = o.order_no || o.created_at;
-        if (!seen.has(key)) {
+        if (!seenOrderNos.has(key)) {
           totalOrderAmount += o.order_amount || 0;
-          // Payment mode breakdown (if fields exist)
           if (o.cash_amount) cash += o.cash_amount;
           if (o.upi_amount) upi += o.upi_amount;
           if (o.pay_later) pay_later += o.pay_later;
-          seen.add(key);
+          seenOrderNos.add(key);
         }
       });
-      setSalesSummary({ totalOrderAmount, cash, upi, pay_later });
+      const orderCount = seenOrderNos.size;
+      setSalesSummary({ totalOrderAmount, cash, upi, pay_later, orderCount });
 
       // Fetch all expenses for today (IST)
       const { data: exp, error: expErr } = await supabase
@@ -146,7 +146,7 @@ export default function Sales() {
       const { error: insertErr } = await supabase.from('expense').insert({
         expense: expenseName,
         amount: Number(expenseForm.amount),
-        payment_mode: expenseForm.payment_mode,
+        ['payment mode']: expenseForm.payment_mode,
       });
       if (insertErr) throw insertErr;
       setSuccess('Expense added!');
@@ -165,21 +165,83 @@ export default function Sales() {
       {error && <div className="bg-red-100 text-red-700 p-2 mb-2 rounded">{error}</div>}
       {success && <div className="bg-green-100 text-green-700 p-2 mb-2 rounded">{success}</div>}
       <div className="bg-white rounded shadow p-4 mb-6">
-    {/* Removed 'Today's Sales' section title as requested */}
-        <div className="grid grid-cols-2 gap-4 mb-2">
-          <div className="p-2 bg-yellow-50 rounded col-span-2">
-            <div className="text-sm text-gray-500">Total Sales:</div>
-            <div className="text-xl font-bold">₹{(salesSummary.totalOrderAmount || 0).toFixed(2)}</div>
-            <div className="flex flex-wrap gap-4 mt-2">
-              <span className="text-sm text-gray-700">Cash: <span className="font-semibold">₹{(salesSummary.cash || 0).toFixed(2)}</span></span>
-              <span className="text-sm text-gray-700">UPI: <span className="font-semibold">₹{(salesSummary.upi || 0).toFixed(2)}</span></span>
-              <span className="text-sm text-gray-700">Pay Later: <span className="font-semibold">₹{(salesSummary.pay_later || 0).toFixed(2)}</span></span>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+          {/* Sales Card - Rupee symbol with payment breakdown */}
+          <div className="flex flex-col items-center justify-center bg-green-50 rounded-lg shadow p-4">
+            <div className="mb-2 text-green-600">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" viewBox="0 0 24 24" fill="currentColor">
+                <text x="4" y="20" fontSize="18" fontFamily="Arial">₹</text>
+              </svg>
+            </div>
+            <div className="text-2xl font-bold text-green-700">₹{Math.round(salesSummary.totalOrderAmount || 0).toLocaleString('en-IN')}</div>
+            <div className="text-sm text-green-700 mt-1">Sales</div>
+            <div className="mt-2 w-full flex flex-row items-center justify-center gap-4 text-xs text-gray-700">
+              <div className="flex items-center gap-1">
+                {/* Cash symbol: money bill */}
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-green-600" viewBox="0 0 24 24" fill="currentColor">
+                  <rect x="2" y="7" width="20" height="10" rx="2" fill="#bbf7d0" stroke="#059669" strokeWidth="1" />
+                  <text x="8" y="16" fontSize="8" fontFamily="Arial" fill="#059669">₹</text>
+                </svg>
+                <span className="font-semibold">₹{Math.round(salesSummary.cash || 0).toLocaleString('en-IN')}</span>
+              </div>
+              <div className="flex items-center gap-1">
+                {/* UPI symbol: mobile phone */}
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-blue-600" viewBox="0 0 24 24" fill="currentColor">
+                  <rect x="7" y="3" width="10" height="18" rx="2" fill="#dbeafe" stroke="#2563eb" strokeWidth="1" />
+                  <circle cx="12" cy="19" r="1" fill="#2563eb" />
+                </svg>
+                <span className="font-semibold">₹{Math.round(salesSummary.upi || 0).toLocaleString('en-IN')}</span>
+              </div>
+              <div className="flex items-center gap-1">
+                {/* Pay Later symbol: clock */}
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-yellow-600" viewBox="0 0 24 24" fill="currentColor">
+                  <circle cx="12" cy="12" r="8" fill="#fef9c3" stroke="#eab308" strokeWidth="1" />
+                  <rect x="11" y="7" width="2" height="6" rx="1" fill="#eab308" />
+                  <rect x="12" y="12" width="4" height="2" rx="1" fill="#eab308" />
+                </svg>
+                <span className="font-semibold">₹{Math.round(salesSummary.pay_later || 0).toLocaleString('en-IN')}</span>
+              </div>
             </div>
           </div>
+          {/* Orders Card - Full Shopping Cart */}
+          <div className="flex flex-col items-center justify-center bg-blue-50 rounded-lg shadow p-4">
+            <div className="mb-2 text-blue-600">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M7 18c-1.104 0-2 .896-2 2s.896 2 2 2 2-.896 2-2-.896-2-2-2zm10 0c-1.104 0-2 .896-2 2s.896 2 2 2 2-.896 2-2-.896-2-2-2zM7.16 16l.84-2h7.18l.84 2H7.16zm12.24-2.34l-1.72-7.45A2.003 2.003 0 0 0 15.75 5H6.21l-.94-2H2v2h2l3.6 7.59-1.35 2.44C5.16 16.37 5.52 17 6.16 17h12v-2H7.42l.94-1.68h7.45c.75 0 1.41-.41 1.74-1.04z" />
+              </svg>
+            </div>
+            <div className="text-2xl font-bold text-blue-700">{(salesSummary.orderCount || 0).toLocaleString('en-IN')}</div>
+            <div className="text-sm text-blue-700 mt-1">Orders</div>
+          </div>
+          {/* Returns Card - Undo Arrow */}
+          <div className="flex flex-col items-center justify-center bg-yellow-50 rounded-lg shadow p-4">
+            <div className="mb-2 text-yellow-600">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 14l-6-6m0 0l6-6m-6 6h18" />
+              </svg>
+            </div>
+            <div className="text-2xl font-bold text-yellow-700">0</div>
+            <div className="text-sm text-yellow-700 mt-1">Returns</div>
+          </div>
+          {/* Expense Card - Money with Wings Emoji */}
+          <div className="flex flex-col items-center justify-center bg-red-50 rounded-lg shadow p-4">
+            <div className="mb-2 text-red-600 text-2xl">💸</div>
+            <div className="text-2xl font-bold text-red-700">₹{Math.round(expenses.reduce((sum, e) => sum + (e.amount || 0), 0)).toLocaleString('en-IN')}</div>
+            <div className="text-sm text-red-700 mt-1">Expense</div>
+          </div>
         </div>
-        <div className="mt-2 p-2 bg-green-50 rounded">
-          <div className="text-sm text-gray-500">Available Cash</div>
-          <div className="text-xl font-bold text-green-700">₹{availableCash.toFixed(2)}</div>
+        {/* Removed duplicate Cash, UPI, Pay Later breakdown below cards */}
+        <div className="mt-2 p-2 bg-green-50 rounded flex items-center gap-2">
+          <span className="text-sm text-gray-500 flex items-center gap-1">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
+              <rect x="3" y="7" width="18" height="10" rx="2" fill="#a7f3d0" stroke="#059669" strokeWidth="2" />
+              <rect x="7" y="13" width="10" height="3" rx="1" fill="#059669" />
+              <rect x="9" y="15" width="2" height="1" rx="0.5" fill="#fff" />
+              <rect x="13" y="15" width="2" height="1" rx="0.5" fill="#fff" />
+            </svg>
+            Cash in Drawer
+          </span>
+          <div className="text-xl font-bold text-green-700">₹{Math.round(availableCash).toLocaleString('en-IN')}</div>
         </div>
       </div>
 
