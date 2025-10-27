@@ -7,54 +7,39 @@
     flex-direction: column;
   }
   
-  /* Sidebar adjustments for mobile - convert to bottom navigation */
-  nav.fixed {
+  /* Hide desktop navigation on mobile */
+  nav.desktop-nav {
+    display: none !important;
+  }
+  
+  /* Mobile bottom navigation */
+  nav.mobile-nav {
     position: fixed !important;
-    top: auto !important;
     bottom: 0 !important;
     left: 0 !important;
     right: 0 !important;
     width: 100% !important;
-    height: 70px;
-    flex-direction: row !important;
-    justify-content: space-around;
-    align-items: center;
-    z-index: 1000 !important; /* Increased z-index to ensure it's always on top */
-    padding: 0 !important;
-    border-top: 2px solid #e5e7eb;
-    border-right: none !important;
+    height: 70px !important;
+    z-index: 1000 !important;
     background-color: white;
     box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
-    display: flex !important; /* Ensure it's always displayed */
+    border-top: 2px solid #e5e7eb;
   }
   
-  /* Style for navigation links in mobile view */
-  nav.fixed a {
-    display: flex !important;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding: 6px 2px !important;
-    width: 100%;
-    max-width: 80px;
-    font-size: 0.7rem !important;
-    text-align: center;
-    overflow: hidden;
+  /* Submenu overlay styling */
+  nav.mobile-nav > div:first-child {
+    z-index: 1001 !important;
   }
   
   /* Ensure navigation labels are properly sized and truncated */
-  nav.fixed .nav-label {
+  nav.mobile-nav .nav-label {
     width: 100%;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
     font-size: 0.65rem !important;
     line-height: 1.2;
-  }
-  
-  /* Hide the collapse button on mobile */
-  nav.fixed button {
-    display: none !important;
+    max-width: 60px;
   }
   
   /* Main content padding to account for bottom nav */
@@ -285,12 +270,26 @@
   display: none !important;
 }
 
+.desktop-hidden {
+  display: block !important;
+}
+
 @media (min-width: 769px) {
   .mobile-hidden {
     display: block !important;
   }
   
   .desktop-hidden {
+    display: none !important;
+  }
+  
+  /* Show desktop navigation */
+  nav.desktop-nav {
+    display: flex !important;
+  }
+  
+  /* Hide mobile navigation */
+  nav.mobile-nav {
     display: none !important;
   }
   
@@ -315,65 +314,6 @@
 /* Transitions for responsive nav */
 .mobile-nav-transition {
   transition: all 0.3s ease;
-}
-
-/* Mobile nav view styling */
-@media (max-width: 768px) {
-  .desktop-view {
-    display: none !important;
-  }
-  
-  .mobile-view {
-    display: block !important;
-  }
-  
-  /* Special rules for Create Bill page */
-  body.create-bill-page main {
-    padding-bottom: 120px !important;
-  }
-  
-  body.create-bill-page .pb-16 {
-    padding-bottom: 90px !important;
-  }
-  
-  /* Add solid background to bottom navigation */
-  body::after {
-    content: "";
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    height: 70px;
-    background-color: white;
-    z-index: 999;
-  }
-
-  /* Force navigation menu to be visible at all times on mobile */
-  nav.fixed {
-    position: fixed !important;
-    bottom: 0 !important;
-    display: flex !important;
-    visibility: visible !important;
-    opacity: 1 !important;
-    transform: none !important;
-    height: 70px !important;
-    min-height: 70px !important;
-    background-color: white !important;
-    z-index: 9999 !important;  /* Ensure it's always on top */
-    box-shadow: 0 -2px 10px rgba(0,0,0,0.15) !important;
-  }
-  
-  /* Add a pseudo-element to create a solid background that hides content */
-  nav.fixed::before {
-    content: "";
-    position: absolute;
-    left: 0;
-    right: 0;
-    top: 0;
-    bottom: 0;
-    background-color: white;
-    z-index: -1;
-  }
 }
 
 /* Hide input spinners (arrows) on number fields */
