@@ -5,10 +5,10 @@ export function Navigation({ navOpen, setNavOpen, currentPage }) {
   const [sidebarWidth, setSidebarWidth] = useState(200);
   const [isResizing, setIsResizing] = useState(false);
   const [expandedMenus, setExpandedMenus] = useState({ 
-    billingSales: true,
+    billingSales: false,
     stockManagement: false,
     history: false
-  }); // Billing & Sales expanded by default
+  }); // All menus collapsed by default
   const location = useLocation();
 
   const navItems = [
@@ -266,7 +266,7 @@ export function Navigation({ navOpen, setNavOpen, currentPage }) {
                   }`}
                 >
                   <span className="text-2xl mb-1">{item.icon}</span>
-                  <span className="text-xs leading-tight text-center nav-label" style={{ fontSize: '0.65rem' }}>
+                  <span className="text-xs leading-tight text-center nav-label" style={{ fontSize: '0.7rem' }}>
                     {item.label}
                   </span>
                 </Link>
@@ -283,7 +283,7 @@ export function Navigation({ navOpen, setNavOpen, currentPage }) {
                   }`}
                 >
                   <span className="text-2xl mb-1">{item.icon}</span>
-                  <span className="text-xs leading-tight text-center nav-label" style={{ fontSize: '0.65rem' }}>
+                  <span className="text-xs leading-tight text-center nav-label" style={{ fontSize: '0.7rem' }}>
                     {item.label}
                   </span>
                   {expandedMenus[item.id] && (

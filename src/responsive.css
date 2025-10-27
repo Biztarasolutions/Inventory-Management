@@ -34,12 +34,12 @@
   /* Ensure navigation labels are properly sized and truncated */
   nav.mobile-nav .nav-label {
     width: 100%;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    font-size: 0.65rem !important;
-    line-height: 1.2;
-    max-width: 60px;
+    white-space: normal;
+    overflow: visible;
+    font-size: 0.7rem !important;
+    line-height: 1.1;
+    max-width: 80px;
+    word-wrap: break-word;
   }
   
   /* Main content padding to account for bottom nav */
