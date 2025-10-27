@@ -23,7 +23,37 @@ const Orders = () => {
         throw error;
       }
 
-      setOrders(data);
+      // Fetch related pay-later transactions for these orders to compute net pay later
+      let enriched = data;
+      try {
+        const orderNos = (data || []).map(o => o.order_no).filter(Boolean);
+        if (orderNos.length > 0) {
+          const { data: txData, error: txError } = await supabase
+            .from('pay later transaction')
+            .select('order_no, upi_amount, cash_amount')
+            .in('order_no', orderNos);
+
+          if (txError) {
+            console.error('Error fetching pay later transactions:', txError);
+          } else if (txData) {
+            const paidMap = {};
+            txData.forEach(tx => {
+              const paid = Number(tx.upi_amount || 0) + Number(tx.cash_amount || 0);
+              paidMap[tx.order_no] = (paidMap[tx.order_no] || 0) + paid;
+            });
+
+            enriched = data.map(o => {
+              const paid = paidMap[o.order_no] || 0;
+              const net = Math.max(0, (Number(o.pay_later) || 0) - paid);
+              return { ...o, paid_from_transactions: paid, net_pay_later: net };
+            });
+          }
+        }
+      } catch (innerErr) {
+        console.error('Error computing net pay later:', innerErr);
+      }
+
+      setOrders(enriched);
     } catch (error) {
       console.error('Error fetching orders:', error);
       setError(error.message);
@@ -97,6 +127,7 @@ const Orders = () => {
                   <th className="p-2 text-right font-medium border">UPI Amount</th>
                   <th className="p-2 text-right font-medium border">Cash Amount</th>
                   <th className="p-2 text-right font-medium border">Pay Later</th>
+                  <th className="p-2 text-right font-medium border">Net Pay Later</th>
                 </tr>
               </thead>
               <tbody>
@@ -118,6 +149,7 @@ const Orders = () => {
                     <td className="p-2 border text-right">₹{order.upi_amount.toFixed(2)}</td>
                     <td className="p-2 border text-right">₹{order.cash_amount.toFixed(2)}</td>
                     <td className="p-2 border text-right">₹{order.pay_later.toFixed(2)}</td>
+                    <td className="p-2 border text-right">₹{(order.net_pay_later || 0).toFixed(2)}</td>
                   </tr>
                 ))}
               </tbody>

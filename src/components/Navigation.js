@@ -15,6 +15,7 @@ export function Navigation({ navOpen, setNavOpen, currentPage }) {
     { to: '/stock-history', label: 'Stock History', icon: '🕑' },
     { to: '/add-supplier', label: 'Add Supplier', icon: '🏷️' },
     { to: '/expense', label: 'Expense', icon: '📝' },
+    { to: '/modification', label: 'Modification', icon: '✏️' },
   ];
 
   const handleMouseMove = useCallback((e) => {

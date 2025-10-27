@@ -109,8 +109,23 @@ export default function Sales() {
     }
   });
   const cashFromOrders = Object.values(uniqueOrderCash).reduce((sum, amt) => sum + amt, 0);
+  // Also include cash received today via pay later transaction table (cash_amount)
+  let cashFromPayLaterTx = 0;
+  try {
+    // fetch transactions for today in IST
+    const { data: payLaterTx } = await supabase
+      .from('pay later transaction')
+      .select('cash_amount, created_at')
+      .gte('created_at', todayIST + 'T00:00:00+05:30')
+      .lte('created_at', todayIST + 'T23:59:59+05:30');
+    if (Array.isArray(payLaterTx)) {
+      cashFromPayLaterTx = payLaterTx.reduce((s, r) => s + (Number(r.cash_amount) || 0), 0);
+    }
+  } catch (e) {
+    console.error('Failed to fetch pay later transactions for cash drawer:', e);
+  }
   const cashExpenses = (exp || []).filter(e => (e['payment_mode'] || e['payment mode']) === 'cash').reduce((sum, e) => sum + (e.amount || 0), 0);
-  setAvailableCash(cashFromOrders - cashExpenses);
+  setAvailableCash(cashFromOrders + cashFromPayLaterTx - cashExpenses);
     } catch (err) {
       setError('Failed to fetch data: ' + err.message);
     } finally {

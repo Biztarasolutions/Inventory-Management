@@ -9,10 +9,23 @@ const SearchableDropdown = ({
   placeholder = "Select...", 
   className = "",
   allowCustomInput = false,
-  onInputChange
+  onInputChange,
+  // optional external trigger: when this value changes, close the floating panel.
+  closeTrigger,
+  // optional callback invoked when input is clicked/opened
+  onOpen
 }) => {
   const [isOpen, setIsOpen] = useState(false);
-  const [searchTerm, setSearchTerm] = useState(value ? (typeof value === 'object' ? value.value : value) : '');
+  useEffect(() => {
+    // TEMP DEBUG: Log options prop for diagnosis
+    console.log('SearchableDropdown options:', options);
+  }, [options]);
+  useEffect(() => {
+    // TEMP DEBUG: Log options prop for diagnosis
+    console.log('SearchableDropdown options:', options);
+  }, [options]);
+  // Ensure searchTerm is always a string to avoid non-string runtime errors
+  const [searchTerm, setSearchTerm] = useState(value ? (typeof value === 'object' ? String(value.value) : String(value)) : '');
   const containerRef = useRef(null);
   const inputRef = useRef(null);
   const { refs, floatingStyles } = useFloating({
@@ -29,18 +42,37 @@ const SearchableDropdown = ({
   }, [onChange]);
 
   const handleInputClick = useCallback(() => {
+    if (onOpen) {
+      try { onOpen(); } catch (err) { /* swallow */ }
+    }
     setIsOpen(prev => !prev);
     setTimeout(() => {
       if (inputRef.current) {
         inputRef.current.focus();
       }
     }, 0);
-  }, []);
+  }, [onOpen]);
 
   // Outside click handling with stable ref
   useEffect(() => {
     function handleClickOutside(event) {
       if (containerRef.current && !containerRef.current.contains(event.target)) {
+        // If custom input allowed and there's a search term that doesn't match existing options,
+        // treat clicking outside as confirming the custom option (so it gets "added").
+        try {
+          const raw = searchTerm || '';
+          if (allowCustomInput && raw) {
+            const exists = options.some(opt => {
+              if (typeof opt === 'string') return String(opt) === String(raw);
+              return String(opt.value) === String(raw);
+            });
+            if (!exists) {
+              handleSelect({ label: raw, value: raw });
+            }
+          }
+        } catch (err) {
+          // ignore any comparison errors
+        }
         setIsOpen(false);
         setSearchTerm('');
       }
@@ -50,16 +82,49 @@ const SearchableDropdown = ({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []); // Only run once on mount
 
-  // Filter options based on search term
-  const filteredOptions = options.filter(option => {
+  // If the parent changes the selected value (for example when a 10-digit phone
+  // is detected and the parent programmatically sets the value), close the
+  // dropdown and synchronize the search term so the floating input doesn't
+  // block other UI elements (like the Name field) beneath it.
+  useEffect(() => {
+    // Close dropdown when value prop changes
+    setIsOpen(false);
+    setSearchTerm(value ? (typeof value === 'object' ? String(value.value) : String(value)) : '');
+  }, [value]);
+
+  // Close dropdown when an external closeTrigger toggles (used by parents to
+  // force-close the floating panel after auto-detection like a 10-digit phone).
+  useEffect(() => {
+    if (typeof closeTrigger !== 'undefined') {
+      setIsOpen(false);
+    }
+  }, [closeTrigger]);
+
+  // Filter options based on search term — normalize everything to strings first
+  const lowerTerm = (searchTerm || '').toString().toLowerCase();
+  let filteredOptions = options.filter(option => {
     // Handle both string options and object options with label/value
     if (typeof option === 'string') {
-      return option.toLowerCase().includes(searchTerm.toLowerCase());
-    } else if (option && option.label) {
-      return option.label.toLowerCase().includes(searchTerm.toLowerCase());
+      return option.toString().toLowerCase().includes(lowerTerm);
+    } else if (option && option.label != null) {
+      return String(option.label).toLowerCase().includes(lowerTerm);
+    } else if (option && option.value != null) {
+      return String(option.value).toLowerCase().includes(lowerTerm);
     }
     return false;
   });
+
+  // Deduplicate filteredOptions by value
+  if (filteredOptions.length > 0 && typeof filteredOptions[0] === 'object') {
+    const seen = new Set();
+    filteredOptions = filteredOptions.filter(opt => {
+      if (seen.has(opt.value)) return false;
+      seen.add(opt.value);
+      return true;
+    });
+  } else if (filteredOptions.length > 0 && typeof filteredOptions[0] === 'string') {
+    filteredOptions = Array.from(new Set(filteredOptions));
+  }
 
   // If custom input is allowed and searchTerm is not in options, add it as a selectable option
   let customOption = null;
@@ -76,7 +141,7 @@ const SearchableDropdown = ({
       >
         <div className="flex justify-between items-center">
           <span className={`${value ? 'text-gray-900' : 'text-gray-500'}`}>
-            {value ? (typeof value === 'object' ? value.value : value) : placeholder}
+            {value ? (typeof value === 'object' ? (value.label || value.value) : value) : placeholder}
           </span>
           <svg
             className={`w-4 h-4 text-gray-400 transition-transform ${isOpen ? 'rotate-180' : ''}`}
@@ -115,6 +180,16 @@ const SearchableDropdown = ({
                 setSearchTerm(e.target.value);
                 if (allowCustomInput && onInputChange) onInputChange(e.target.value);
               }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  if (customOption) {
+                    handleSelect(customOption);
+                  } else if (filteredOptions && filteredOptions.length > 0) {
+                    handleSelect(filteredOptions[0]);
+                  }
+                }
+              }}
               className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
             />
           </div>
@@ -139,12 +214,7 @@ const SearchableDropdown = ({
                   data-dropdown-option
                   className="px-3 py-2 text-sm hover:bg-gray-100 cursor-pointer text-gray-900 whitespace-nowrap"
                 >
-                  {typeof option === 'string' ? option : (
-                    <div className="flex flex-col">
-                      <span className="font-medium">{option.value}</span>
-                      <span className="text-xs text-gray-500">{option.label}</span>
-                    </div>
-                  )}
+                  {typeof option === 'string' ? option : (option.label || option.value)}
                 </div>
               ))
             ) : (

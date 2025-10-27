@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../supabaseClient';
+import { formatDateTime } from '../App';
 import SearchableDropdown from './SearchableDropdown';
 
 const CreateBill = () => {
@@ -8,6 +9,56 @@ const CreateBill = () => {
     name: '',
     isExisting: false
   });
+  // tracks what the user typed in the customer dropdown (raw)
+  const [customerInputRaw, setCustomerInputRaw] = useState('');
+  // 'name' | 'phone' | 'unknown' | 'selected' - controls which secondary input to show
+  const [customerInputType, setCustomerInputType] = useState('unknown');
+  const customerNameRef = useRef(null);
+  const customerPhoneRef = useRef(null);
+  // raw timestamp of last order (ISO) — we'll render a relative time like "2 days ago"
+  const [lastOrderAt, setLastOrderAt] = useState(null);
+
+  // return relative time like 'just now', '5 minutes ago', '2 days ago'
+  const timeAgo = (isoString) => {
+    if (!isoString) return null;
+    try {
+      const now = new Date();
+      const then = new Date(isoString);
+      const diffMs = now - then;
+      const seconds = Math.floor(diffMs / 1000);
+      if (seconds < 10) return 'just now';
+      if (seconds < 60) return `${seconds} seconds ago`;
+      const minutes = Math.floor(seconds / 60);
+      if (minutes < 60) return `${minutes} minute${minutes === 1 ? '' : 's'} ago`;
+      const hours = Math.floor(minutes / 60);
+      if (hours < 24) return `${hours} hour${hours === 1 ? '' : 's'} ago`;
+      const days = Math.floor(hours / 24);
+      if (days < 30) return `${days} day${days === 1 ? '' : 's'} ago`;
+      const months = Math.floor(days / 30);
+      if (months < 12) return `${months} month${months === 1 ? '' : 's'} ago`;
+      const years = Math.floor(months / 12);
+      return `${years} year${years === 1 ? '' : 's'} ago`;
+    } catch (err) {
+      return null;
+    }
+  };
+
+  // Called when user confirms the secondary input (name or phone) after typing in the dropdown
+  const confirmCustomerFromSecondary = () => {
+    // Only confirm when both name and a valid 10-digit phone are present.
+    const phoneStr = customer.phone ? String(customer.phone).replace(/\D/g, '') : '';
+    const nameStr = customer.name ? String(customer.name).trim() : '';
+    if (nameStr && phoneStr.length === 10) {
+      setCustomerInputRaw('');
+      setCustomerInputType('selected');
+      // Check existing customer to possibly mark isExisting and fetch last order
+      checkExistingCustomer(phoneStr);
+    } else {
+      // If incomplete, keep the secondary inputs visible so user can finish entry
+      // Optionally we could show a small validation tooltip here in future.
+      // For now, do nothing.
+    }
+  };
 
   const [billItems, setBillItems] = useState([
     { 
@@ -37,6 +88,8 @@ const CreateBill = () => {
   const [productOptions, setProductOptions] = useState([]);
   const [inventoryQuantities, setInventoryQuantities] = useState({});
   const [sizeOptions, setSizeOptions] = useState({});
+  const [customerOptions, setCustomerOptions] = useState([]);
+  const [customerDropdownCloseTrigger, setCustomerDropdownCloseTrigger] = useState(0);
 
   const fetchData = async () => {
     try {
@@ -80,7 +133,7 @@ const CreateBill = () => {
           const productCode = product.code.toString();
           const size = item.size;
           const quantity = item.quantity || 0;
-          
+
           productCodesWithInventory.add(productCode);
           
           // Initialize product entry if it doesn't exist
@@ -132,6 +185,25 @@ const CreateBill = () => {
       setSizeOptions(sizeOpts);
       setInventoryQuantities(inventoryByProductAndSize);
 
+      // fetch customer options for customer dropdown
+      try {
+        const { data: customersData, error: customersError } = await supabase
+          .from('Customers')
+          .select('Name, "Phone Number"');
+        if (!customersError && Array.isArray(customersData)) {
+          const opts = customersData.map(c => ({
+            label: `${c.Name || ''} — ${c['Phone Number'] || ''}`,
+            value: c['Phone Number'] || ''
+          }));
+          setCustomerOptions(opts);
+        } else {
+          setCustomerOptions([]);
+        }
+      } catch (err) {
+        console.error('Error fetching customers for dropdown:', err);
+        setCustomerOptions([]);
+      }
+
     } catch (error) {
       console.error('Error fetching data:', error);
     }
@@ -157,15 +229,43 @@ const CreateBill = () => {
         }
         
         if (data && data.Name) {
+          // existing customer found — overwrite name with canonical value and mark existing
           setCustomer(prev => ({ ...prev, name: data.Name || '', isExisting: true }));
+          // Fetch latest order for this phone
+          try {
+            const { data: lastOrder, error: lastOrderError } = await supabase
+              .from('Orders')
+              .select('created_at')
+              .eq('phone_number', phone)
+              .order('created_at', { ascending: false })
+              .limit(1)
+              .single();
+
+            if (lastOrderError && lastOrderError.code !== 'PGRST116') {
+              console.error('Error fetching last order:', lastOrderError);
+              setLastOrderAt(null);
+            } else if (lastOrder && lastOrder.created_at) {
+              // store raw ISO timestamp and render relative time in UI
+              setLastOrderAt(lastOrder.created_at);
+            } else {
+              setLastOrderAt(null);
+            }
+          } catch (err) {
+            console.error('Error fetching last order:', err);
+            setLastOrderAt(null);
+          }
         } else {
-          setCustomer(prev => ({ ...prev, name: '', isExisting: false }));
+          // no existing customer — keep any name the user may have typed and mark as new
+          setCustomer(prev => ({ ...prev, isExisting: false }));
+          setLastOrderAt(null);
         }
       } catch (error) {
         console.error('Error checking customer:', error);
       }
     } else {
-      setCustomer(prev => ({ ...prev, name: '', isExisting: false }));
+      // Phone not complete yet — keep any typed name and keep as not-existing
+      setCustomer(prev => ({ ...prev, isExisting: false }));
+      setLastOrderAt(null);
     }
   };
 
@@ -267,7 +367,10 @@ const CreateBill = () => {
   };
 
   const getAvailableSizes = (productCode) => {
-    return sizeOptions[productCode] || [];
+    // Return only sizes that currently have positive inventory for the given product
+    const sizes = sizeOptions[productCode] || [];
+    if (!inventoryQuantities[productCode]) return [];
+    return sizes.filter(s => (inventoryQuantities[productCode][s] || 0) > 0);
   };
 
   const calculateSellingPrice = (item) => {
@@ -400,7 +503,7 @@ const CreateBill = () => {
           const { error } = await supabase
             .from('Customers')
             .insert({
-              'Phone Number': customer.phone,
+              'Phone Number': Number(customer.phone) || customer.phone,
               'Name': customer.name.trim()
             });
           
@@ -416,7 +519,7 @@ const CreateBill = () => {
       const orderData = billItems.map(item => ({
         order_no: nextOrderNo,
         customer_name: customer.name,
-        phone_number: customer.phone,
+        phone_number: Number(customer.phone) || customer.phone,
         product: item.product_code,
         size: item.size,
         mrp: item.mrp,
@@ -564,39 +667,166 @@ const CreateBill = () => {
   return (
     <div className="p-6 pb-24">
       <div className="bg-white rounded-lg shadow-md p-6">
-        <div className="space-y-6">
-          <h1 className="text-2xl font-bold">Create Bill</h1>
+          <div className="space-y-6">
+              <div className="flex items-start justify-between">
+                <h1 className="text-2xl font-bold">Create Bill</h1>
+                {lastOrderAt ? (
+                  <div className="text-right ml-4" title={formatDateTime(lastOrderAt)}>
+                    <div className="text-sm text-gray-500">Last Order</div>
+                    <div className="text-sm font-medium text-gray-700">{timeAgo(lastOrderAt)}</div>
+                  </div>
+                ) : null}
+              </div>
           
           <div className="bg-gray-50 p-4 rounded-md">
             <h2 className="text-lg font-semibold mb-3">Customer Information</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
-                <input
-                  type="text"
-                  pattern="[0-9]*"
-                  maxLength={10}
-                  className="w-full p-2 border rounded-md"
-                  value={customer.phone}
-                  onChange={(e) => {
-                    const value = e.target.value.replace(/\D/g, '');
-                    setCustomer(prev => ({...prev, phone: value}));
-                    checkExistingCustomer(value);
+                <label className="block text-sm font-medium text-gray-700 mb-1">Customer</label>
+                <SearchableDropdown
+                  value={
+                    // Only treat a value as "selected" when the input flow indicates selection.
+                    // While the user is typing (name-first or phone-first) we keep the value null
+                    // so the dropdown's internal value-change effect doesn't close the floating panel.
+                    (customerInputType === 'selected' || customer.isExisting) ? (
+                      customer.name && !customer.phone
+                        ? { label: customer.name, value: customer.name }
+                        : customer.phone
+                          ? { label: customer.name ? `${customer.name} — ${customer.phone}` : customer.phone, value: customer.phone }
+                          : null
+                    ) : null
+                  }
+                  onOpen={() => {
+                    // If an existing customer is selected but user clicks the field to edit,
+                    // clear the existing-selection flag and allow typing a new value.
+                    if (customer.isExisting) {
+                      setCustomer(prev => ({ ...prev, isExisting: false, phone: '', name: '' }));
+                      setCustomerInputType('unknown');
+                      setCustomerInputRaw('');
+                    }
                   }}
-                  placeholder="Enter 10-digit phone number"
+                  onChange={(selected) => {
+                    const rawVal = typeof selected === 'string' ? selected : (selected ? selected.value : '');
+                    const val = rawVal == null ? '' : String(rawVal);
+                    const label = (selected && typeof selected === 'object' && selected.label) ? selected.label : '';
+                    if (label && label.includes('—')) {
+                      const parts = label.split('—').map(s => s.trim());
+                      // Normalize phone to digits and use last 10 digits if country code present
+                      const digits = val.replace(/\D/g, '');
+                      const phoneToUse = digits.length >= 10 ? digits.slice(-10) : digits;
+                      setCustomer({ phone: phoneToUse, name: parts[0] || '', isExisting: !!val });
+                      setCustomerInputType('selected');
+                      setCustomerInputRaw('');
+                      if (phoneToUse && phoneToUse.length === 10) checkExistingCustomer(phoneToUse);
+                    } else {
+                      // If user selected a custom option (string)
+                      const raw = val || '';
+                      setCustomerInputRaw(raw);
+                      const hasLetter = /[A-Za-z]/.test(raw);
+                      const onlyDigits = /^\d+$/.test(raw);
+                      if (hasLetter) {
+                        // treat as name entered first
+                        setCustomer({ phone: '', name: raw, isExisting: false });
+                        setCustomerInputType('name');
+                        setTimeout(() => { if (customerPhoneRef.current) customerPhoneRef.current.focus(); }, 0);
+                      } else if (onlyDigits && raw.length === 10) {
+                        // treat as full phone entered first
+                        setCustomer({ phone: raw, name: '', isExisting: false });
+                        setCustomerInputType('phone');
+                        // trigger the dropdown to close (SearchableDropdown will respond to this)
+                        setCustomerDropdownCloseTrigger(prev => prev + 1);
+                        // slight delay to allow dropdown to close before focusing the name field
+                        setTimeout(() => { if (customerNameRef.current) customerNameRef.current.focus(); }, 120);
+                        checkExistingCustomer(raw);
+                      } else {
+                        // unknown/partial — keep raw in phone field but show both
+                        setCustomer(prev => ({ ...prev, phone: raw.replace(/\D/g, ''), isExisting: false }));
+                        setCustomerInputType('unknown');
+                      }
+                    }
+                  }}
+                  options={customerOptions}
+                  placeholder="Select or type"
+                  allowCustomInput={true}
+                  onInputChange={(input) => {
+                    const raw = input || '';
+                    setCustomerInputRaw(raw);
+                    const onlyDigits = /^\d+$/.test(raw);
+                    // Auto-detect phone when user types a full 10-digit number — keep name-typing passive until explicit Add
+                    if (onlyDigits && raw.length === 10) {
+                      setCustomer({ phone: raw, name: '', isExisting: false });
+                      setCustomerInputType('phone');
+                      setCustomerDropdownCloseTrigger(prev => prev + 1);
+                      // allow dropdown to close (see SearchableDropdown effect) then focus
+                      setTimeout(() => { if (customerNameRef.current) customerNameRef.current.focus(); }, 120);
+                      checkExistingCustomer(raw);
+                    } else {
+                      // otherwise remain passive (don't convert text into customer name until user confirms Add)
+                      setCustomer(prev => ({ ...prev, phone: raw.replace(/\D/g, '') }));
+                      setCustomerInputType('unknown');
+                    }
+                  }}
+                  closeTrigger={customerDropdownCloseTrigger}
                 />
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
-                <input
-                  type="text"
-                  className={`w-full p-2 border rounded-md ${customer.isExisting ? 'bg-gray-100' : ''}`}
-                  value={customer.name}
-                  onChange={(e) => !customer.isExisting && setCustomer({...customer, name: e.target.value})}
-                  disabled={customer.isExisting}
-                  placeholder="Enter customer name"
-                />
-              </div>
+              {/* Secondary input: show Name or Phone depending on what user typed in the customer dropdown */}
+              {customer.isExisting ? null : customerInputType === 'name' ? (
+                <div>
+                  {/* Show the entered name above the phone input so user sees what they typed */}
+                  <div className="mb-2 text-sm text-gray-700">
+                    <div className="text-xs text-gray-500">Name</div>
+                    <div className="font-medium">{customer.name || '-'}</div>
+                  </div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
+                  <input
+                    ref={customerPhoneRef}
+                    type="text"
+                    pattern="[0-9]*"
+                    maxLength={10}
+                    className="w-full p-2 border rounded-md"
+                    value={customer.phone}
+                    onChange={(e) => {
+                      const value = e.target.value.replace(/\D/g, '');
+                      setCustomer(prev => ({ ...prev, phone: value }));
+                      if (value.length === 10) checkExistingCustomer(value);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        confirmCustomerFromSecondary();
+                      }
+                    }}
+                    placeholder="Enter phone number"
+                  />
+                </div>
+              ) : customerInputType === 'phone' ? (
+                <div>
+                  {/* Show the entered phone above the name input so user sees what they typed */}
+                  <div className="mb-2 text-sm text-gray-700">
+                    <div className="text-xs text-gray-500">Phone Number</div>
+                    <div className="font-medium">{customer.phone ? (customer.phone.length === 10 ? `+91 ${customer.phone}` : customer.phone) : '-'}</div>
+                  </div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
+                  <input
+                    ref={customerNameRef}
+                    type="text"
+                    className="w-full p-2 border rounded-md"
+                    value={customer.name}
+                    onChange={(e) => setCustomer(prev => ({ ...prev, name: e.target.value }))}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        confirmCustomerFromSecondary();
+                      }
+                    }}
+                    placeholder="Enter customer name"
+                  />
+                </div>
+              ) : (
+                // unknown: do not show secondary inputs until user types/selects a customer
+                null
+              )}
+              {/* removed duplicate last-order display (header shows it now) */}
             </div>
           </div>
 

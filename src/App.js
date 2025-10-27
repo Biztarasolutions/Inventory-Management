@@ -88,6 +88,7 @@ function AppContent({ navOpen, setNavOpen }) {
             <Route path="/add-supplier" element={<AddSupplier />} />
             <Route path="/sales" element={<Sales />} />
             <Route path="/expense" element={<Expense />} />
+            <Route path="/modification" element={require('./components/Modification').default()} />
           </Routes>
         </main>
       </div>

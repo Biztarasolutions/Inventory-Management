@@ -5,9 +5,10 @@ const FilterDropdown = ({ label, options, selectedValues = [], onChange }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const dropdownRef = useRef(null);
 
-  // Filter options based on search term
+  // Filter options based on search term (normalize to strings first)
+  const lowerTerm = (searchTerm || '').toString().toLowerCase();
   const filteredOptions = options.filter(option =>
-    option.toString().toLowerCase().includes(searchTerm.toLowerCase())
+    String(option).toLowerCase().includes(lowerTerm)
   );
 
   // Close dropdown when clicking outside
