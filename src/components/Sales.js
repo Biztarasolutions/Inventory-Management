@@ -272,12 +272,14 @@ export default function Sales() {
           <div>
             <label className="block text-sm font-medium mb-1">Expense Name</label>
             <SearchableDropdown
-              value={expenseForm.expense ? { label: expenseForm.expense, value: expenseForm.expense } : null}
-              onChange={opt => handleExpenseChange('expense', opt ? opt.value : (typeof opt === 'string' ? opt : ''))}
+              value={expenseForm.expense}
+              onChange={opt => {
+                const value = opt?.value || opt || '';
+                handleExpenseChange('expense', value);
+              }}
               options={expenseOptions}
               placeholder="Type or select expense"
               allowCustomInput={true}
-              onInputChange={val => handleExpenseChange('expense', val)}
               className="w-full"
             />
           </div>

@@ -6,9 +6,8 @@ import FilterDropdown from './FilterDropdown';
 
 export function AddStocks() {
   // Product Info state
+  const [style, setStyle] = useState('');
   const [code, setCode] = useState('');
-  const [supplier, setSupplier] = useState('');
-  const [brand, setBrand] = useState('');
   const [mrp, setMrp] = useState('');
   const [image, setImage] = useState(null);
   
@@ -17,10 +16,8 @@ export function AddStocks() {
   const [inventoryMsg, setInventoryMsg] = useState('');
   
   // Data states
-  const [selectedProductId, setSelectedProductId] = useState('');
+  const [selectedProductName, setSelectedProductName] = useState('');
   const [products, setProducts] = useState([]);
-  const [suppliers, setSuppliers] = useState([]);
-  const [brands, setBrands] = useState([]);
   const [inventoryHistory, setInventoryHistory] = useState([]);
   const [enrichedInventoryHistory, setEnrichedInventoryHistory] = useState([]);
   const [filteredInventoryHistory, setFilteredInventoryHistory] = useState([]);
@@ -29,10 +26,7 @@ export function AddStocks() {
   const [historyFilters, setHistoryFilters] = useState({
     datetime: [],
     action: [],
-    product_code: [],
-    style_code: [],
-    supplier: [],
-    brand: [],
+    product_name: [],
     mrp: [],
     size: [],
     quantity: [],
@@ -53,17 +47,13 @@ export function AddStocks() {
   }, []);
 
   const fetchData = async () => {
-    const [inventoryData, productsData, suppliersData, brandsData] = await Promise.all([
+    const [inventoryData, productsData] = await Promise.all([
       supabase.from('inventory').select('*').order('date', { ascending: false }),
-      supabase.from('products').select('*'),
-      supabase.from('suppliers').select('*'),
-      supabase.from('brands').select('*')
+      supabase.from('products').select('*')
     ]);
 
     if (inventoryData.data) setInventoryHistory(inventoryData.data);
     if (productsData.data) setProducts(productsData.data);
-    if (suppliersData.data) setSuppliers(suppliersData.data);
-    if (brandsData.data) setBrands(brandsData.data);
   };
 
   // Enrich and filter inventory history
@@ -83,21 +73,11 @@ export function AddStocks() {
 
     // Enrich the data with product details
     const enrichedData = todayFiltered.map(entry => {
-      const product = products.find(p => p.id === entry.product_id) || {};
-      const supplier = suppliers.find(s => s.id === product.supplier_id) || {};
-      const brand = brands.find(b => b.id === product.brand_id) || {};
-      
       return {
         ...entry,
-        product,
-        supplier,
-        brand,
         formatted_date: formatDateTime(entry.date),
-        product_code: product.code || '',
-        style_code: product.style_code || '',
-        supplier_name: supplier.name || '',
-        brand_name: brand.name || '',
-        mrp_value: product.mrp || 0
+        product_name: entry.product || '',
+        mrp_value: entry.mrp || 0
       };
     });
     
@@ -108,10 +88,7 @@ export function AddStocks() {
       return (
         (historyFilters.datetime.length === 0 || historyFilters.datetime.includes(item.formatted_date)) &&
         (historyFilters.action.length === 0 || historyFilters.action.includes(item.action)) &&
-        (historyFilters.product_code.length === 0 || historyFilters.product_code.includes(item.product_code)) &&
-        (historyFilters.style_code.length === 0 || historyFilters.style_code.includes(item.style_code)) &&
-        (historyFilters.supplier.length === 0 || historyFilters.supplier.includes(item.supplier_name)) &&
-        (historyFilters.brand.length === 0 || historyFilters.brand.includes(item.brand_name)) &&
+        (historyFilters.product_name.length === 0 || historyFilters.product_name.includes(item.product_name)) &&
         (historyFilters.mrp.length === 0 || historyFilters.mrp.includes(item.mrp_value.toString())) &&
         (historyFilters.size.length === 0 || historyFilters.size.includes(item.size)) &&
         (historyFilters.quantity.length === 0 || historyFilters.quantity.includes(item.quantity.toString())) &&
@@ -144,17 +121,14 @@ export function AddStocks() {
   // Hide 'sold' items from the inventory history
   const notSold = sorted.filter(item => item.action !== 'sold');
   setFilteredInventoryHistory(notSold);
-  }, [inventoryHistory, products, suppliers, brands, historyFilters, historySortConfig]);
+  }, [inventoryHistory, products, historyFilters, historySortConfig]);
 
   // Reset history filters
   const resetHistoryFilters = () => {
     setHistoryFilters({
       datetime: [],
       action: [],
-      product_code: [],
-      style_code: [],
-      supplier: [],
-      brand: [],
+      product_name: [],
       mrp: [],
       size: [],
       quantity: [],
@@ -164,32 +138,28 @@ export function AddStocks() {
   };
 
   // Selected product information
-  const selectedProduct = products.find(p => p.id === Number(selectedProductId));
-  const selectedSupplier = selectedProduct ? suppliers.find(s => s.id === selectedProduct.supplier_id) : null;
-  const selectedBrand = selectedProduct ? brands.find(b => b.id === selectedProduct.brand_id) : null;
+  const selectedProduct = products.find(p => p.product === selectedProductName);
 
   // Add new product
   const handleAddProduct = async () => {
     setProductMsg('');
     
-    if (!code || !supplier || !brand || !mrp) {
-      setProductMsg('Please fill all required fields.');
+    if (!style || !code || !mrp) {
+      setProductMsg('Please fill all required fields (Style, Code, MRP).');
       return;
     }
     
-    const supplierObj = suppliers.find(s => s.name === supplier);
-    const brandObj = brands.find(b => b.name === brand);
+    const productValue = `${style}-${code}`;
     
-    if (!supplierObj || !brandObj) {
-      setProductMsg('Selected supplier or brand not found.');
+    // Check if product already exists
+    const existingProduct = products.find(p => p.product === productValue);
+    if (existingProduct) {
+      setProductMsg('Product already exists!');
       return;
     }
     
     const newProduct = {
-      code: Number(code),
-      style_code: `FS-${code}`,
-      supplier_id: supplierObj.id,
-      brand_id: brandObj.id,
+      product: productValue,
       mrp: Number(mrp),
       image_url: image ? await fileToBase64(image) : null
     };
@@ -203,9 +173,8 @@ export function AddStocks() {
     
     if (data && data.length > 0) {
       setProducts(prev => [...prev, ...data]);
+      setStyle('');
       setCode('');
-      setSupplier('');
-      setBrand('');
       setMrp('');
       setImage(null);
       setProductMsg('Product added successfully!');
@@ -227,7 +196,7 @@ export function AddStocks() {
   const handleAddAllToInventory = async () => {
     setInventoryMsg('');
     
-    if (!selectedProductId) {
+    if (!selectedProductName) {
       setInventoryMsg('Please select a product first.');
       return;
     }
@@ -248,7 +217,9 @@ export function AddStocks() {
       return {
         date: formattedDate,
         action: action,
-        product_id: selectedProduct.id,
+        product: selectedProduct.product,
+        mrp: selectedProduct.mrp,
+        image: selectedProduct.image_url,
         size: row.size,
         quantity: quantity,
         note: row.note || ''
@@ -267,7 +238,7 @@ export function AddStocks() {
         setInventoryHistory(prev => [...data, ...prev]);
         setInventoryMsg(`Successfully added ${data.length} inventory entries!`);
         setSizes([{ size: '', quantity: '', note: '' }]);
-        setSelectedProductId('');
+        setSelectedProductName('');
       } else {
         setInventoryMsg('Inventory not added.');
       }
@@ -283,6 +254,17 @@ export function AddStocks() {
         <div className="border-b md:border-b-0 md:border-r pb-6 md:pb-0 md:pr-6 mb-6 md:mb-0 bg-white rounded-lg shadow-md shadow-gray-300 md:ml-0 pl-6 transition-all duration-300">
           <h2 className="text-xl font-bold mb-4 text-black">Product Information</h2>
           <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-black mb-1">Style</label>
+              <input
+                type="text"
+                value={style}
+                onChange={e => setStyle(e.target.value)}
+                placeholder="e.g., FS"
+                className="border px-2 py-1 w-full"
+                required
+              />
+            </div>
             <div>
               <label className="block text-black mb-1">Code (5 digits)</label>
               <input
@@ -303,30 +285,13 @@ export function AddStocks() {
               />
             </div>
             <div>
-              <label className="block text-black mb-1">Style</label>
+              <label className="block text-black mb-1">Product (Style-Code)</label>
               <input
                 type="text"
-                value={`FS-${code}`}
+                value={style && code ? `${style}-${code}` : ''}
                 readOnly
+                placeholder="Enter style and code first"
                 className="border px-2 py-1 w-full bg-gray-100"
-              />
-            </div>
-            <div>
-              <label className="block text-black mb-1">Supplier</label>
-              <SearchableDropdown
-                value={supplier}
-                onChange={setSupplier}
-                options={suppliers.map(s => s.name)}
-                placeholder="Select Supplier"
-              />
-            </div>
-            <div>
-              <label className="block text-black mb-1">Brand</label>
-              <SearchableDropdown
-                value={brand}
-                onChange={setBrand}
-                options={brands.map(b => b.name)}
-                placeholder="Select Brand"
               />
             </div>
             <div>
@@ -370,34 +335,18 @@ export function AddStocks() {
             <div className="mb-4">
               <label className="block text-black mb-1">Select Existing Product</label>
               <SearchableDropdown
-                value={selectedProductId ? (() => {
-                  const product = products.find(p => p.id.toString() === selectedProductId);
-                  if (!product) return '';
-                  const supplier = suppliers.find(s => s.id === product.supplier_id);
-                  const brand = brands.find(b => b.id === product.brand_id);
-                  return `${product.code} - ${supplier?.name || 'Unknown'} - ${brand?.name || 'Unknown'}`;
-                })() : ''}
+                value={selectedProductName}
                 onChange={(value) => {
-                  if (!value) {
-                    setSelectedProductId('');
-                    return;
-                  }
-                  const productCode = value.split(' - ')[0];
-                  const product = products.find(p => p.code.toString() === productCode);
-                  setSelectedProductId(product ? product.id.toString() : '');
+                  setSelectedProductName(value || '');
                 }}
-                options={products.map(p => {
-                  const supplier = suppliers.find(s => s.id === p.supplier_id);
-                  const brand = brands.find(b => b.id === p.brand_id);
-                  return `${p.code} - ${supplier?.name || 'Unknown'} - ${brand?.name || 'Unknown'}`;
-                })}
+                options={products.map(p => p.product).filter(Boolean)}
                 placeholder="Select Product"
               />
             </div>
             {selectedProduct && (
               <div className="mb-4 p-4 bg-gray-100 border rounded">
                 <div className="font-semibold text-black">Selected Product:</div>
-                <div>{`${selectedProduct.style_code} - ${selectedSupplier ? selectedSupplier.name : 'Unknown'} - ${selectedBrand ? selectedBrand.name : 'Unknown'}`}</div>
+                <div>{selectedProduct.product}</div>
               </div>
             )}
           </div>
@@ -490,33 +439,9 @@ export function AddStocks() {
                   <th className="p-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-b min-w-[120px]">
                     <FilterDropdown
                       label="Product"
-                      options={[...new Set(enrichedInventoryHistory.map(item => item.product_code).filter(Boolean))]}
-                      selectedValues={historyFilters.product_code}
-                      onChange={(values) => setHistoryFilters(prev => ({ ...prev, product_code: values }))}
-                    />
-                  </th>
-                  <th className="p-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-b min-w-[120px]">
-                    <FilterDropdown
-                      label="Style"
-                      options={[...new Set(enrichedInventoryHistory.map(item => item.style_code).filter(Boolean))]}
-                      selectedValues={historyFilters.style_code}
-                      onChange={(values) => setHistoryFilters(prev => ({ ...prev, style_code: values }))}
-                    />
-                  </th>
-                  <th className="p-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-b min-w-[120px]">
-                    <FilterDropdown
-                      label="Supplier"
-                      options={[...new Set(enrichedInventoryHistory.map(item => item.supplier_name).filter(Boolean))]}
-                      selectedValues={historyFilters.supplier}
-                      onChange={(values) => setHistoryFilters(prev => ({ ...prev, supplier: values }))}
-                    />
-                  </th>
-                  <th className="p-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-b min-w-[120px]">
-                    <FilterDropdown
-                      label="Brand"
-                      options={[...new Set(enrichedInventoryHistory.map(item => item.brand_name).filter(Boolean))]}
-                      selectedValues={historyFilters.brand}
-                      onChange={(values) => setHistoryFilters(prev => ({ ...prev, brand: values }))}
+                      options={[...new Set(enrichedInventoryHistory.map(item => item.product_name).filter(Boolean))]}
+                      selectedValues={historyFilters.product_name}
+                      onChange={(values) => setHistoryFilters(prev => ({ ...prev, product_name: values }))}
                     />
                   </th>
                   <th className="p-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-b">
@@ -569,14 +494,11 @@ export function AddStocks() {
                         {entry.action || (entry.quantity > 0 ? 'Added' : 'Removed')}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-sm text-gray-900">{entry.product_code}</td>
-                    <td className="px-4 py-3 text-sm text-gray-900">{entry.style_code}</td>
-                    <td className="px-4 py-3 text-sm text-gray-900">{entry.supplier_name}</td>
-                    <td className="px-4 py-3 text-sm text-gray-900">{entry.brand_name}</td>
+                    <td className="px-4 py-3 text-sm text-gray-900">{entry.product_name}</td>
                     <td className="px-4 py-3 text-sm text-gray-900">
-                      {entry.product.image_url ? (
+                      {entry.image ? (
                         <img 
-                          src={entry.product.image_url} 
+                          src={entry.image} 
                           alt="Product" 
                           className="h-8 w-8 object-cover rounded border"
                           onError={(e) => {
@@ -587,7 +509,7 @@ export function AddStocks() {
                       ) : null}
                       <span 
                         className="text-gray-400 text-xs" 
-                        style={{ display: entry.product.image_url ? 'none' : 'block' }}
+                        style={{ display: entry.image ? 'none' : 'block' }}
                       >
                         No image
                       </span>
@@ -599,7 +521,7 @@ export function AddStocks() {
                   </tr>
                 ))}
                 {filteredInventoryHistory.length === 0 && (
-                  <tr><td colSpan="11" className="text-center py-4 text-gray-500">No inventory history found for today.</td></tr>
+                  <tr><td colSpan="8" className="text-center py-4 text-gray-500">No inventory history found for today.</td></tr>
                 )}
               </tbody>
             </table>

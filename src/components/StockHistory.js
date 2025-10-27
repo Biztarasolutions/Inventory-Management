@@ -5,18 +5,12 @@ import FilterDropdown from './FilterDropdown';
 
 export function StockHistory() {
   const [inventory, setInventory] = useState([]);
-  const [products, setProducts] = useState([]);
-  const [suppliers, setSuppliers] = useState([]);
-  const [brands, setBrands] = useState([]);
   
   // Filter states with proper initialization
   const [filters, setFilters] = useState({
     datetime: [],
     action: [],
-    product_code: [],
-    style_code: [],
-    supplier: [],
-    brand: [],
+    product_name: [],
     mrp: [],
     size: [],
     quantity: [],
@@ -31,36 +25,18 @@ export function StockHistory() {
   }, []);
 
   const fetchData = async () => {
-    const [invRes, prodRes, supRes, brandRes] = await Promise.all([
-      supabase.from('inventory').select('*').order('date', { ascending: false }),
-      supabase.from('products').select('*'),
-      supabase.from('suppliers').select('*'),
-      supabase.from('brands').select('*'),
-    ]);
+    const invRes = await supabase.from('inventory').select('*').order('date', { ascending: false });
     
     if (invRes.data) setInventory(invRes.data);
-    if (prodRes.data) setProducts(prodRes.data);
-    if (supRes.data) setSuppliers(supRes.data);
-    if (brandRes.data) setBrands(brandRes.data);
   };
   
   // Prepare enriched data
   const enrichedData = inventory.map(row => {
-    const product = products.find(p => p.id === row.product_id) || {};
-    const supplier = suppliers.find(s => s.id === product.supplier_id) || {};
-    const brand = brands.find(b => b.id === product.brand_id) || {};
-    
     return {
       ...row,
-      product,
-      supplier,
-      brand,
       formatted_date: formatDateTime(row.date),
-      product_code: product.code || '',
-      style_code: product.style_code || '',
-      supplier_name: supplier.name || '',
-      brand_name: brand.name || '',
-      mrp_value: product.mrp || 0
+      product_name: row.product || '',
+      mrp_value: row.mrp || 0
     };
   });
 
@@ -70,10 +46,7 @@ export function StockHistory() {
     return (
       (filters.datetime.length === 0 || filters.datetime.includes(item.formatted_date)) &&
       (filters.action.length === 0 || filters.action.includes(action)) &&
-      (filters.product_code.length === 0 || filters.product_code.includes(item.product_code)) &&
-      (filters.style_code.length === 0 || filters.style_code.includes(item.style_code)) &&
-      (filters.supplier.length === 0 || filters.supplier.includes(item.supplier_name)) &&
-      (filters.brand.length === 0 || filters.brand.includes(item.brand_name)) &&
+      (filters.product_name.length === 0 || filters.product_name.includes(item.product_name)) &&
       (filters.mrp.length === 0 || filters.mrp.includes(item.mrp_value.toString())) &&
       (filters.size.length === 0 || filters.size.includes(item.size)) &&
       (filters.quantity.length === 0 || filters.quantity.includes(item.quantity.toString())) &&
@@ -107,10 +80,7 @@ export function StockHistory() {
     setFilters({
       datetime: [],
       action: [],
-      product_code: [],
-      style_code: [],
-      supplier: [],
-      brand: [],
+      product_name: [],
       mrp: [],
       size: [],
       quantity: [],
@@ -154,33 +124,9 @@ export function StockHistory() {
                 <th className="p-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-b min-w-[120px]">
                   <FilterDropdown
                     label="Product"
-                    options={[...new Set(enrichedData.map(item => item.product_code))]}
-                    selectedValues={filters.product_code}
-                    onChange={(values) => setFilters(prev => ({ ...prev, product_code: values }))}
-                  />
-                </th>
-                <th className="p-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-b min-w-[120px]">
-                  <FilterDropdown
-                    label="Style"
-                    options={[...new Set(enrichedData.map(item => item.style_code))]}
-                    selectedValues={filters.style_code}
-                    onChange={(values) => setFilters(prev => ({ ...prev, style_code: values }))}
-                  />
-                </th>
-                <th className="p-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-b min-w-[120px]">
-                  <FilterDropdown
-                    label="Supplier"
-                    options={[...new Set(enrichedData.map(item => item.supplier_name))]}
-                    selectedValues={filters.supplier}
-                    onChange={(values) => setFilters(prev => ({ ...prev, supplier: values }))}
-                  />
-                </th>
-                <th className="p-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-b min-w-[120px]">
-                  <FilterDropdown
-                    label="Brand"
-                    options={[...new Set(enrichedData.map(item => item.brand_name))]}
-                    selectedValues={filters.brand}
-                    onChange={(values) => setFilters(prev => ({ ...prev, brand: values }))}
+                    options={[...new Set(enrichedData.map(item => item.product_name).filter(Boolean))]}
+                    selectedValues={filters.product_name}
+                    onChange={(values) => setFilters(prev => ({ ...prev, product_name: values }))}
                   />
                 </th>
                 <th className="p-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-b">
@@ -230,10 +176,7 @@ export function StockHistory() {
                       {item.action === 'sold' ? 'Sold' : (item.quantity > 0 ? 'Added' : 'Removed')}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-sm text-gray-900">{item.product_code}</td>
-                  <td className="px-4 py-3 text-sm text-gray-900">{item.style_code}</td>
-                  <td className="px-4 py-3 text-sm text-gray-900">{item.supplier_name}</td>
-                  <td className="px-4 py-3 text-sm text-gray-900">{item.brand_name}</td>
+                  <td className="px-4 py-3 text-sm text-gray-900">{item.product_name}</td>
                   <td className="px-4 py-3 text-sm text-gray-900">₹{item.mrp_value}</td>
                   <td className="px-4 py-3 text-sm text-gray-900">{item.size}</td>
                   <td className="px-4 py-3 text-sm text-gray-900">{item.quantity}</td>
@@ -241,7 +184,7 @@ export function StockHistory() {
                 </tr>
               ))}
               {sortedData.length === 0 && (
-                <tr><td colSpan="10" className="text-center py-4 text-gray-500">No stock history found.</td></tr>
+                <tr><td colSpan="7" className="text-center py-4 text-gray-500">No stock history found.</td></tr>
               )}
             </tbody>
           </table>

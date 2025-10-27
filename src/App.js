@@ -8,7 +8,6 @@ import Orders from "./components/Orders";
 import { StockInventory } from "./components/StockInventory";
 import { AddStocks } from "./components/AddStocks";
 import { StockHistory } from "./components/StockHistory";
-import { AddSupplier } from "./components/AddSupplier";
 import Sales from "./components/Sales";
 import Expense from "./components/Expense";
 
@@ -85,7 +84,6 @@ function AppContent({ navOpen, setNavOpen }) {
             <Route path="/add-stocks" element={<AddStocks />} />
             <Route path="/stock-inventory" element={<StockInventory />} />
             <Route path="/stock-history" element={<StockHistory />} />
-            <Route path="/add-supplier" element={<AddSupplier />} />
             <Route path="/sales" element={<Sales />} />
             <Route path="/expense" element={<Expense />} />
             <Route path="/modification" element={require('./components/Modification').default()} />

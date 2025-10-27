@@ -13,7 +13,6 @@ export function Navigation({ navOpen, setNavOpen, currentPage }) {
     { to: '/add-stocks', label: 'Add Stocks', icon: '📦' },
     { to: '/stock-inventory', label: 'Stock Inventory', icon: <img src="/stock%20inventory.png" alt="Stock Inventory" style={{ width: 22, height: 22, display: 'inline', verticalAlign: 'middle' }} /> },
     { to: '/stock-history', label: 'Stock History', icon: '🕑' },
-    { to: '/add-supplier', label: 'Add Supplier', icon: '🏷️' },
     { to: '/expense', label: 'Expense', icon: '📝' },
     { to: '/modification', label: 'Modification', icon: '✏️' },
   ];

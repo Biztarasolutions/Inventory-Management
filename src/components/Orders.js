@@ -133,23 +133,23 @@ const Orders = () => {
               <tbody>
                 {orders.map((order, index) => (
                   <tr key={index} className="hover:bg-gray-50">
-                    <td className="p-2 border">{formatDateTime(order.created_at)}</td>
-                    <td className="p-2 border">{order.order_no}</td>
-                    <td className="p-2 border">{order.customer_name}</td>
-                    <td className="p-2 border">{order.phone_number}</td>
-                    <td className="p-2 border">{order.product}</td>
-                    <td className="p-2 border">{order.size}</td>
-                    <td className="p-2 border text-right">₹{order.mrp.toFixed(2)}</td>
-                    <td className="p-2 border text-right">₹{calculateProductDiscount(order).toFixed(2)}</td>
-                    <td className="p-2 border text-right">₹{order.selling_price.toFixed(2)}</td>
-                    <td className="p-2 border text-center">{order.quantity}</td>
-                    <td className="p-2 border text-right">₹{order.total.toFixed(2)}</td>
-                    <td className="p-2 border text-right">₹{calculateOrderDiscount(order).toFixed(2)}</td>
-                    <td className="p-2 border text-right">₹{order.order_amount.toFixed(2)}</td>
-                    <td className="p-2 border text-right">₹{order.upi_amount.toFixed(2)}</td>
-                    <td className="p-2 border text-right">₹{order.cash_amount.toFixed(2)}</td>
-                    <td className="p-2 border text-right">₹{order.pay_later.toFixed(2)}</td>
-                    <td className="p-2 border text-right">₹{(order.net_pay_later || 0).toFixed(2)}</td>
+                    <td className="px-4 py-3 border text-sm">{formatDateTime(order.created_at)}</td>
+                    <td className="px-4 py-3 border text-sm">{order.order_no}</td>
+                    <td className="px-4 py-3 border text-sm">{order.customer_name}</td>
+                    <td className="px-4 py-3 border text-sm">{order.phone_number}</td>
+                    <td className="px-4 py-3 border text-sm">{order.product}</td>
+                    <td className="px-4 py-3 border text-sm">{order.size}</td>
+                    <td className="px-4 py-3 border text-sm text-right">₹{order.mrp.toFixed(2)}</td>
+                    <td className="px-4 py-3 border text-sm text-right">₹{calculateProductDiscount(order).toFixed(2)}</td>
+                    <td className="px-4 py-3 border text-sm text-right">₹{order.selling_price.toFixed(2)}</td>
+                    <td className="px-4 py-3 border text-sm text-center">{order.quantity}</td>
+                    <td className="px-4 py-3 border text-sm text-right">₹{order.total.toFixed(2)}</td>
+                    <td className="px-4 py-3 border text-sm text-right">₹{calculateOrderDiscount(order).toFixed(2)}</td>
+                    <td className="px-4 py-3 border text-sm text-right">₹{order.order_amount.toFixed(2)}</td>
+                    <td className="px-4 py-3 border text-sm text-right">₹{order.upi_amount.toFixed(2)}</td>
+                    <td className="px-4 py-3 border text-sm text-right">₹{order.cash_amount.toFixed(2)}</td>
+                    <td className="px-4 py-3 border text-sm text-right">₹{order.pay_later.toFixed(2)}</td>
+                    <td className="px-4 py-3 border text-sm text-right">₹{(order.net_pay_later || 0).toFixed(2)}</td>
                   </tr>
                 ))}
               </tbody>

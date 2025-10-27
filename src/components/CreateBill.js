@@ -95,93 +95,97 @@ const CreateBill = () => {
   const fetchData = async () => {
     try {
       console.log('Fetching data...');
-      const [inventoryData, productsData] = await Promise.all([
-        supabase.from('inventory').select('*'),
-        supabase.from('products').select('*')
-      ]);
+      const inventoryData = await supabase.from('inventory').select('*');
 
       if (inventoryData.error) {
         console.error('Error fetching inventory:', inventoryData.error);
         return;
       }
-      if (productsData.error) {
-        console.error('Error fetching products:', productsData.error);
-        return;
-      }
 
       const inventoryItems = inventoryData.data || [];
-      const productItems = productsData.data || [];
       
-      console.log('Products data:', productItems);
       console.log('Inventory data:', inventoryItems);
       
-      if (!productItems.length || !inventoryItems.length) {
-        console.log('No data received');
+      if (!inventoryItems.length) {
+        console.log('No inventory data received');
         return;
       }
 
-      setProducts(productItems);
-      
-      // Calculate inventory quantities by product code and size
+      // Calculate inventory quantities by product and size
       const inventoryByProductAndSize = {};
-      const productCodesWithInventory = new Set();
+      const productsWithInventory = new Set();
       const sizeOpts = {};
+      const productMrpMap = {};
       
       // Process inventory data to calculate available quantities
       inventoryItems.forEach(item => {
-        const product = productItems.find(p => p.id === item.product_id);
-        if (product) {
-          const productCode = product.code.toString();
-          const size = item.size;
-          const quantity = item.quantity || 0;
+        const productName = item.product;
+        const size = item.size;
+        const quantity = item.quantity || 0;
+        const action = item.action;
 
-          productCodesWithInventory.add(productCode);
+        if (!productName || !size) return;
+
+        // Store MRP for this product
+        if (item.mrp && !productMrpMap[productName]) {
+          productMrpMap[productName] = item.mrp;
+        }
+        
+        // Initialize product entry if it doesn't exist
+        if (!inventoryByProductAndSize[productName]) {
+          inventoryByProductAndSize[productName] = {};
+        }
+        
+        // Initialize size entry if it doesn't exist
+        if (!inventoryByProductAndSize[productName][size]) {
+          inventoryByProductAndSize[productName][size] = 0;
+        }
+        
+        // Add or subtract quantity based on action
+        if (action === 'added') {
+          inventoryByProductAndSize[productName][size] += Math.abs(quantity);
+        } else if (action === 'deleted' || action === 'sold') {
+          inventoryByProductAndSize[productName][size] -= Math.abs(quantity);
+        }
+        
+        // Add to products with inventory if quantity is positive
+        if (inventoryByProductAndSize[productName][size] > 0) {
+          productsWithInventory.add(productName);
           
-          // Initialize product entry if it doesn't exist
-          if (!inventoryByProductAndSize[productCode]) {
-            inventoryByProductAndSize[productCode] = {};
+          // Add size to options
+          if (!sizeOpts[productName]) {
+            sizeOpts[productName] = new Set();
           }
-          
-          // Initialize size entry if it doesn't exist
-          if (!inventoryByProductAndSize[productCode][size]) {
-            inventoryByProductAndSize[productCode][size] = 0;
-          }
-          
-          // Add size to options if not already present
-          if (!sizeOpts[productCode]) {
-            sizeOpts[productCode] = new Set();
-          }
-          sizeOpts[productCode].add(size);
-          
-          // Add quantity
-          inventoryByProductAndSize[productCode][size] += quantity;
+          sizeOpts[productName].add(size);
         }
       });
 
-      // Convert size Sets to arrays
-      Object.keys(sizeOpts).forEach(code => {
-        sizeOpts[code] = Array.from(sizeOpts[code]);
+      // Convert size Sets to arrays and filter out sizes with zero or negative inventory
+      Object.keys(sizeOpts).forEach(productName => {
+        sizeOpts[productName] = Array.from(sizeOpts[productName]).filter(size => 
+          inventoryByProductAndSize[productName][size] > 0
+        );
       });
       
-      // Create product options array for dropdown
-      const productOpts = Array.from(productCodesWithInventory)
-        .filter(code => {
+      // Create product options array for dropdown (only products with positive inventory)
+      const productOpts = Array.from(productsWithInventory)
+        .filter(productName => {
           // Check if any size has positive inventory
-          const sizes = Object.keys(inventoryByProductAndSize[code] || {});
-          return sizes.some(size => inventoryByProductAndSize[code][size] > 0);
+          const sizes = Object.keys(inventoryByProductAndSize[productName] || {});
+          return sizes.some(size => inventoryByProductAndSize[productName][size] > 0);
         })
-        .map(code => { 
-          const product = productItems.find(p => p.code.toString() === code);
-          return {
-            label: code + (product?.style_code ? ` - ${product.style_code}` : ''),
-            value: code 
-          };
-        });
+        .map(productName => ({
+          label: productName,
+          value: productName,
+          mrp: productMrpMap[productName] || 0
+        }));
 
       console.log('Product options:', productOpts);
       console.log('Size options:', sizeOpts);
       console.log('Inventory quantities:', inventoryByProductAndSize);
+      console.log('Product MRP map:', productMrpMap);
       
+      setProducts(productOpts);
       setProductOptions(productOpts);
       setSizeOptions(sizeOpts);
       setInventoryQuantities(inventoryByProductAndSize);
@@ -270,14 +274,14 @@ const CreateBill = () => {
     }
   };
 
-  const calculateAvailableQuantity = (product_code, size, currentIndex) => {
-    if (!product_code || !size || !inventoryQuantities[product_code] || !inventoryQuantities[product_code][size]) {
+  const calculateAvailableQuantity = (product, size, currentIndex) => {
+    if (!product || !size || !inventoryQuantities[product] || !inventoryQuantities[product][size]) {
       return 0;
     }
     
-    const totalInventory = inventoryQuantities[product_code][size] || 0;
+    const totalInventory = inventoryQuantities[product][size] || 0;
     const allocatedQuantity = billItems.reduce((sum, item, idx) => {
-      if (idx !== currentIndex && item.product_code === product_code && item.size === size) {
+      if (idx !== currentIndex && item.product_code === product && item.size === size) {
         return sum + item.quantity;
       }
       return sum;
@@ -296,24 +300,26 @@ const CreateBill = () => {
       newBillItems[index].quantity = 1;
       newBillItems[index].total = 0;
       newBillItems[index].availableQuantity = 0;
+      
+      // Set MRP from the selected product
+      const product = products.find(p => p.value === value);
+      if (product) {
+        newBillItems[index].mrp = product.mrp || 0;
+      }
     }
     else if (field === 'size') {
       newBillItems[index].size = value;
-      const product_code = newBillItems[index].product_code;
+      const product = newBillItems[index].product_code;
       
-      if (product_code && value) {
-        const product = products.find(p => p.code.toString() === product_code);
-        if (product) {
-          newBillItems[index].mrp = product.mrp || 0;
-          const availableQty = calculateAvailableQuantity(product_code, value, index);
-          newBillItems[index].availableQuantity = availableQty;
-          if (newBillItems[index].quantity > availableQty) {
-            newBillItems[index].quantity = Math.max(1, availableQty);
-          }
-          const sellingPrice = calculateSellingPrice(newBillItems[index]);
-          newBillItems[index].sellingPrice = sellingPrice;
-          newBillItems[index].total = sellingPrice * newBillItems[index].quantity;
+      if (product && value) {
+        const availableQty = calculateAvailableQuantity(product, value, index);
+        newBillItems[index].availableQuantity = availableQty;
+        if (newBillItems[index].quantity > availableQty) {
+          newBillItems[index].quantity = Math.max(1, availableQty);
         }
+        const sellingPrice = calculateSellingPrice(newBillItems[index]);
+        newBillItems[index].sellingPrice = sellingPrice;
+        newBillItems[index].total = sellingPrice * newBillItems[index].quantity;
       }
     }
     else if (field === 'discount') {
@@ -324,11 +330,11 @@ const CreateBill = () => {
       newBillItems[index].total = sellingPrice * newBillItems[index].quantity;
     }
     else if (field === 'quantity') {
-      const product_code = newBillItems[index].product_code;
+      const product = newBillItems[index].product_code;
       const size = newBillItems[index].size;
       
-      if (product_code && size) {
-        const availableQty = calculateAvailableQuantity(product_code, size, index);
+      if (product && size) {
+        const availableQty = calculateAvailableQuantity(product, size, index);
         newBillItems[index].availableQuantity = availableQty;
         
         if (value === 0 || value === '') {
@@ -344,7 +350,7 @@ const CreateBill = () => {
         newBillItems[index].total = sellingPrice * newBillItems[index].quantity;
         
         newBillItems.forEach((item, idx) => {
-          if (idx !== index && item.product_code === product_code && item.size === size) {
+          if (idx !== index && item.product_code === product && item.size === size) {
             item.availableQuantity = calculateAvailableQuantity(item.product_code, item.size, idx);
             if (item.quantity > item.availableQuantity && item.availableQuantity > 0) {
               item.quantity = item.availableQuantity;
@@ -367,11 +373,11 @@ const CreateBill = () => {
     setBillItems(newBillItems);
   };
 
-  const getAvailableSizes = (productCode) => {
+  const getAvailableSizes = (product) => {
     // Return only sizes that currently have positive inventory for the given product
-    const sizes = sizeOptions[productCode] || [];
-    if (!inventoryQuantities[productCode]) return [];
-    return sizes.filter(s => (inventoryQuantities[productCode][s] || 0) > 0);
+    const sizes = sizeOptions[product] || [];
+    if (!inventoryQuantities[product]) return [];
+    return sizes.filter(s => (inventoryQuantities[product][s] || 0) > 0);
   };
 
   const calculateSellingPrice = (item) => {
@@ -550,14 +556,16 @@ const CreateBill = () => {
 
       // Add entries to stock history for each purchased item
       const stockHistoryEntries = billItems.map(item => {
-        const product = products.find(p => p.code.toString() === item.product_code);
+        const product = products.find(p => p.value === item.product_code);
         return {
-          product_id: product?.id,
+          product: item.product_code, // Store product name directly
+          mrp: item.mrp,
+          image: product?.image || null,
           size: item.size,
-          quantity: -item.quantity, // Negative quantity because stock is being reduced
+          quantity: item.quantity, // Positive quantity for sold items
           date: new Date().toISOString(),
           note: `Order #${nextOrderNo} - ${customer.name}`,
-          action: 'sold' // Explicitly mark as sold instead of removed
+          action: 'sold' // Explicitly mark as sold
         };
       });
 
@@ -566,8 +574,9 @@ const CreateBill = () => {
         const { data: currentInventory, error: invError } = await supabase
           .from('inventory')
           .select('id, quantity')
-          .eq('product_id', item.product_code)
+          .eq('product', item.product_code) // Use product field instead of product_id
           .eq('size', item.size)
+          .eq('action', 'added') // Only get added inventory entries
           .gt('quantity', 0)  // Only get entries with positive quantity
           .order('date', { ascending: true });  // Get oldest entries first (FIFO)
 

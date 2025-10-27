@@ -4,16 +4,10 @@ import FilterDropdown from './FilterDropdown';
 
 export function StockInventory() {
   const [inventory, setInventory] = useState([]);
-  const [products, setProducts] = useState([]);
-  const [suppliers, setSuppliers] = useState([]);
-  const [brands, setBrands] = useState([]);
   
-  // Filter states for each column
   const [filters, setFilters] = useState({
-    product_code: [],
-    style_code: [],
-    supplier_name: [],
-    brand_name: [],
+    product_name: [],
+    mrp: [],
     sizes: [],
     total_stock: []
   });
@@ -27,17 +21,9 @@ export function StockInventory() {
 
   const fetchData = async () => {
     try {
-      const [inventoryData, productsData, suppliersData, brandsData] = await Promise.all([
-        supabase.from('inventory').select('*'),
-        supabase.from('products').select('*'),
-        supabase.from('suppliers').select('*'),
-        supabase.from('brands').select('*')
-      ]);
+      const inventoryData = await supabase.from('inventory').select('*');
 
       setInventory(inventoryData.data || []);
-      setProducts(productsData.data || []);
-      setSuppliers(suppliersData.data || []);
-      setBrands(brandsData.data || []);
     } catch (error) {
       console.error('Error fetching data:', error);
     }
@@ -48,27 +34,22 @@ export function StockInventory() {
     const productMap = new Map();
     
     inventory.forEach(item => {
-      const product = products.find(p => p.id === item.product_id);
-      const supplier = suppliers.find(s => s.id === product?.supplier_id);
-      const brand = brands.find(b => b.id === product?.brand_id);
+      const productName = item.product;
       
-      const key = item.product_id;
-      if (!productMap.has(key)) {
-        productMap.set(key, {
-          product_id: item.product_id,
-          product_code: product?.code || 'Unknown',
-          style_code: product?.style_code || 'Unknown',
-          supplier_name: supplier?.name || 'Unknown',
-          brand_name: brand?.name || 'Unknown',
-          mrp: product?.mrp || 0,
-          image_url: product?.image_url,
+      if (!productName) return; // Skip items without product name
+      
+      if (!productMap.has(productName)) {
+        productMap.set(productName, {
+          product_name: productName,
+          mrp: item.mrp || 0,
+          image_url: item.image,
           sizes: new Map(),
           total_stock: 0,
           available_sizes: []
         });
       }
       
-      const productData = productMap.get(key);
+      const productData = productMap.get(productName);
       const qty = Number(item.quantity) || 0;
       
       if (item.action === 'added') {
@@ -118,10 +99,7 @@ export function StockInventory() {
   // Apply filters
   const filteredData = aggregatedData.filter(item => {
     return (
-      (filters.product_code.length === 0 || filters.product_code.includes(item.product_code)) &&
-      (filters.style_code.length === 0 || filters.style_code.includes(item.style_code)) &&
-      (filters.supplier_name.length === 0 || filters.supplier_name.includes(item.supplier_name)) &&
-      (filters.brand_name.length === 0 || filters.brand_name.includes(item.brand_name)) &&
+      (filters.product_name.length === 0 || filters.product_name.includes(item.product_name)) &&
       (filters.sizes.length === 0 || filters.sizes.some(size => Array.from(item.sizes.keys()).includes(size))) &&
       (filters.total_stock.length === 0 || filters.total_stock.includes(item.total_stock.toString()))
     );
@@ -143,10 +121,7 @@ export function StockInventory() {
 
   const resetAllFilters = () => {
     setFilters({
-      product_code: [],
-      style_code: [],
-      supplier_name: [],
-      brand_name: [],
+      product_name: [],
       sizes: [],
       total_stock: []
     });
@@ -210,45 +185,21 @@ export function StockInventory() {
           <table className="w-full table-fixed md:min-w-[1200px] border-collapse">
             <thead className="bg-gray-100 sticky top-0 z-10">
               <tr className="grid-cols-auto">
-                <th className="p-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-b min-w-[110px] w-[10%]">
+                <th className="p-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-b w-[30%] min-w-[150px]">
                   <FilterDropdown
                     label="Product"
-                    options={[...new Set(aggregatedData.map(item => item.product_code))]}
-                    selectedValues={filters.product_code}
-                    onChange={(values) => setFilters(prev => ({ ...prev, product_code: values }))}
+                    options={[...new Set(aggregatedData.map(item => item.product_name))]}
+                    selectedValues={filters.product_name}
+                    onChange={(values) => setFilters(prev => ({ ...prev, product_name: values }))}
                   />
                 </th>
-                <th className="p-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-b min-w-[110px] w-[10%]">
-                  <FilterDropdown
-                    label="Style"
-                    options={[...new Set(aggregatedData.map(item => item.style_code))]}
-                    selectedValues={filters.style_code}
-                    onChange={(values) => setFilters(prev => ({ ...prev, style_code: values }))}
-                  />
-                </th>
-                <th className="p-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-b min-w-[110px] w-[12%]">
-                  <FilterDropdown
-                    label="Supplier"
-                    options={[...new Set(aggregatedData.map(item => item.supplier_name))]}
-                    selectedValues={filters.supplier_name}
-                    onChange={(values) => setFilters(prev => ({ ...prev, supplier_name: values }))}
-                  />
-                </th>
-                <th className="p-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-b min-w-[120px]">
-                  <FilterDropdown
-                    label="Brand"
-                    options={[...new Set(aggregatedData.map(item => item.brand_name))]}
-                    selectedValues={filters.brand_name}
-                    onChange={(values) => setFilters(prev => ({ ...prev, brand_name: values }))}
-                  />
-                </th>
-                <th className="p-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-b min-w-[80px]">
+                <th className="p-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-b w-[10%] min-w-[100px]">
                   <span className="text-gray-700 font-medium">Image</span>
                 </th>
-                <th className="p-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-b min-w-[80px]">
+                <th className="p-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-b w-[10%] min-w-[100px]">
                   <span className="text-gray-700 font-medium">MRP</span>
                 </th>
-                <th className="p-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-b min-w-[120px] w-[15%]">
+                <th className="p-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-b w-[30%] min-w-[180px]">
                   <FilterDropdown
                     label="Sizes"
                     options={[...new Set(aggregatedData.flatMap(item => 
@@ -268,19 +219,16 @@ export function StockInventory() {
                     onChange={(values) => setFilters(prev => ({ ...prev, sizes: values }))}
                   />
                 </th>
-                <th className="p-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-b w-[10%] min-w-[120px]">
+                <th className="p-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-b w-[20%] min-w-[150px]">
                   <span className="text-gray-700 font-medium">Total Inventory</span>
                 </th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {sortedData.map((item, index) => (
-                <React.Fragment key={item.product_id}>
+                <React.Fragment key={item.product_name}>
                   <tr className="hover:bg-gray-50">
-                    <td className="px-4 py-3 text-sm text-gray-900">{item.product_code}</td>
-                    <td className="px-4 py-3 text-sm text-gray-900">{item.style_code}</td>
-                    <td className="px-4 py-3 text-sm text-gray-900">{item.supplier_name}</td>
-                    <td className="px-4 py-3 text-sm text-gray-900">{item.brand_name}</td>
+                    <td className="px-4 py-3 text-sm text-gray-900">{item.product_name}</td>
                     <td className="px-4 py-3 text-sm text-gray-900">
                       {item.image_url ? (
                         <img 
