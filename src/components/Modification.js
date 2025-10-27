@@ -13,15 +13,9 @@ export default function Modification() {
     );
   };
 
-  const handleReturnProducts = () => {
-    // TODO: Implement return logic (e.g., update Supabase, show confirmation)
-    alert(`Returning products: ${selectedReturns.join(', ')}`);
-  };
   const [returnProducts, setReturnProducts] = useState([]);
-  const [payLaterTotals, setPayLaterTotals] = useState({ ordersTotal: 0, transactionsTotal: 0, combined: 0 });
   const [perOrderPayLater, setPerOrderPayLater] = useState([]);
   const [selectedPayNowOrders, setSelectedPayNowOrders] = useState([]); // array of order_no
-  const [paymentMode, setPaymentMode] = useState('cash');
   // keep input values as strings so we can hide zero and preserve formatting
   const [paymentUpi, setPaymentUpi] = useState('');
   const [paymentCash, setPaymentCash] = useState('');
@@ -66,7 +60,6 @@ export default function Modification() {
   // When action is Pay Later, fetch totals: orders' pay_later (count once per order) and transactions from likely tables
   useEffect(() => {
     if (actionType !== 'Pay Later' || !selectedValue) {
-      setPayLaterTotals({ ordersTotal: 0, transactionsTotal: 0, combined: 0 });
       return;
     }
 
@@ -81,6 +74,7 @@ export default function Modification() {
         if (ordersErr) throw ordersErr;
         // Sum pay_later once per unique order_no
         const seen = new Set();
+        // eslint-disable-next-line no-unused-vars
         let ordersTotal = 0;
         (ordersData || []).forEach(o => {
           const key = o.order_no || JSON.stringify(o);
@@ -92,6 +86,7 @@ export default function Modification() {
 
         // 2) Transactions: try a list of possible table names and sum a numeric field
         const candidateTables = ['pay_later_transactions', 'payments', 'paylater', 'pay_later_payments', 'pay_later'];
+        // eslint-disable-next-line no-unused-vars
         let transactionsTotal = 0;
         for (const table of candidateTables) {
           try {
@@ -125,9 +120,11 @@ export default function Modification() {
               }
             }
             if (field) {
+              // eslint-disable-next-line no-unused-vars
               transactionsTotal = (data || []).reduce((s, r) => s + (Number(r[field]) || 0), 0);
             } else {
               // couldn't identify numeric field; skip this table
+              // eslint-disable-next-line no-unused-vars
               transactionsTotal = 0;
             }
             // stop after first table that returned data
@@ -184,13 +181,10 @@ export default function Modification() {
         }
 
         if (mounted) {
-          const combined = (ordersTotal || 0) + (transactionsTotal || 0);
-          setPayLaterTotals({ ordersTotal, transactionsTotal, combined });
           setPerOrderPayLater(perOrder);
         }
       } catch (err) {
         console.error('Failed to fetch pay later totals:', err);
-        if (mounted) setPayLaterTotals({ ordersTotal: 0, transactionsTotal: 0, combined: 0 });
       }
     }
     fetchTotals();
@@ -451,8 +445,6 @@ export default function Modification() {
                   {(() => {
                     const selectedTotal = perOrderPayLater.filter(r => selectedPayNowOrders.includes(r.order_no)).reduce((s, r) => s + (r.remaining || 0), 0);
                     const paidTotal = (Number(paymentUpi || 0) || 0) + (Number(paymentCash || 0) || 0);
-                    const diff = (paidTotal - selectedTotal);
-                    const diffAbs = Math.abs(diff).toFixed(2);
                     return (
                       <>
                         <div className="flex justify-between items-center text-sm font-semibold">
@@ -506,7 +498,7 @@ export default function Modification() {
                           if (upiApplied > 0 || cashApplied > 0) {
                             try {
                               // Insert into the pay later transaction table with the requested column names
-                              const { data: insData, error: insErr } = await supabase.from('pay later transaction').insert([{
+                              const { error: insErr } = await supabase.from('pay later transaction').insert([{
                                 order_no: o.order_no,
                                 upi_amount: upiApplied,
                                 cash_amount: cashApplied,

@@ -10,6 +10,7 @@ const CreateBill = () => {
     isExisting: false
   });
   // tracks what the user typed in the customer dropdown (raw)
+  // eslint-disable-next-line no-unused-vars
   const [customerInputRaw, setCustomerInputRaw] = useState('');
   // 'name' | 'phone' | 'unknown' | 'selected' - controls which secondary input to show
   const [customerInputType, setCustomerInputType] = useState('unknown');
