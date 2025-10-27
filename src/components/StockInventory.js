@@ -158,6 +158,8 @@ export function StockInventory() {
 
   return (
     <div className="p-6 pl-2">
+      <h1 className="text-2xl font-bold mb-4">Stock Inventory</h1>
+      
       <div className="flex flex-wrap justify-between items-center mb-6">
         <div className="bg-white p-3 rounded-lg shadow-sm mb-2 md:mb-0">
           <h3 className="text-sm font-medium text-gray-700 mb-2">Inventory Summary:</h3>

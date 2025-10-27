@@ -91,6 +91,8 @@ export function StockHistory() {
   
   return (
     <div className="p-6 pl-2">
+      <h1 className="text-2xl font-bold mb-4">Stock History</h1>
+      
       <div className="flex justify-end items-center mb-6">
         <button
           onClick={resetAllFilters}
