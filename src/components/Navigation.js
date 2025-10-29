@@ -117,7 +117,7 @@ export function Navigation({ navOpen, setNavOpen, currentPage }) {
             </div>
           </div>
           <div className="flex items-center space-x-4">
-            <span className="text-base font-medium text-white/90 bg-white/10 px-4 py-2 rounded-lg backdrop-blur-sm border border-white/20">{currentPage}</span>
+            <span className="text-sm font-normal text-white/70">{currentPage}</span>
           </div>
         </div>
       </header>

@@ -57,6 +57,7 @@ const pageNames = {
   "/add-supplier": "Add Supplier",
   "/sales": "Sales",
   "/expense": "Expense",
+  "/modification": "Modifications",
   "/": "Add Stocks"
 };
 
