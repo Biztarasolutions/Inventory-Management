@@ -101,113 +101,146 @@ export function Navigation({ navOpen, setNavOpen, currentPage }) {
 
   return (
     <>
-      {/* Top Header - Fixed */}
-      <header className="fixed top-0 left-0 right-0 text-white py-4 px-8 text-2xl font-bold shadow flex items-center justify-between z-50" style={{ backgroundColor: 'rgb(22, 30, 45)' }}>
-        <span>Fashion Studio</span>
-        <span className="ml-4 text-lg font-normal">{currentPage}</span>
+      {/* Premium Top Header - Fixed */}
+      <header className="fixed top-0 left-0 right-0 text-white py-4 px-8 text-2xl font-bold shadow-xl z-50 backdrop-blur-md border-b border-white/10" 
+        style={{ 
+          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%)',
+          boxShadow: '0 10px 40px rgba(102, 126, 234, 0.2)'
+        }}>
+        <div className="flex items-center justify-between max-w-full">
+          <div className="flex items-center space-x-4">
+            <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-lg shadow-lg border border-white/30">
+              <span className="text-3xl">👗</span>
+            </div>
+            <div className="flex flex-col">
+              <span className="text-white font-bold tracking-tight text-2xl">Fashion Boutique</span>
+            </div>
+          </div>
+          <div className="flex items-center space-x-4">
+            <span className="text-base font-medium text-white/90 bg-white/10 px-4 py-2 rounded-lg backdrop-blur-sm border border-white/20">{currentPage}</span>
+          </div>
+        </div>
       </header>
 
-      {/* Left Navigation - Fixed (Desktop) / Bottom Navigation (Mobile) */}
+      {/* Premium Desktop Navigation - Fixed */}
       <nav 
-        className={`bg-white pl-5 pr-1 pb-6 pt-4 flex flex-col space-y-4 relative transition-all duration-300 flex-shrink-0 fixed left-0 top-16 bottom-0 z-40 mobile-nav-transition desktop-nav`}
+        className={`bg-white/95 backdrop-blur-xl pl-5 pr-1 pb-6 pt-4 flex flex-col space-y-4 relative transition-all duration-300 flex-shrink-0 fixed left-0 top-16 bottom-0 z-40 mobile-nav-transition desktop-nav border-r border-gray-200/50`}
         style={{ 
-          width: navOpen ? `${sidebarWidth}px` : '64px',
-          boxShadow: '2px 0 10px rgba(0, 0, 0, 0.05)'
+          width: navOpen ? `${sidebarWidth}px` : '72px',
+          boxShadow: '4px 0 30px rgba(0, 0, 0, 0.04)',
+          background: 'linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(249,250,251,0.95) 100%)'
         }}
       >
-        {/* Toggle button with square/collapse icon */}
+        {/* Premium toggle button */}
         <button
-          className="absolute top-2 right-[-16px] bg-white text-gray-700 rounded p-1 shadow-md z-50 mobile-hidden hover:bg-gray-100 transition-all"
-          style={{ width: '32px', height: '32px' }}
+          className="absolute top-2 right-[-18px] text-white rounded-xl p-2 shadow-xl z-50 mobile-hidden transition-all duration-300 hover:scale-110 active:scale-95 border border-white/20"
+          style={{ 
+            width: '36px', 
+            height: '36px',
+            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            boxShadow: '0 8px 20px rgba(102, 126, 234, 0.4)'
+          }}
           onClick={() => setNavOpen((v) => !v)}
           aria-label={navOpen ? 'Collapse sidebar' : 'Expand sidebar'}
         >
           {navOpen ? (
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <rect x="8" y="8" width="8" height="8" rx="1" stroke="currentColor" strokeWidth="2" />
-              <path d="M5 5L19 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-              <path d="M5 19L19 19" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="m-auto">
+              <path d="M15 18L9 12L15 6" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           ) : (
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <rect x="4" y="4" width="16" height="16" rx="1" stroke="currentColor" strokeWidth="2" />
-              <path d="M8 8L16 8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-              <path d="M8 12L16 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-              <path d="M8 16L16 16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="m-auto">
+              <path d="M9 18L15 12L9 6" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           )}
         </button>
         
-        {/* Navigation menu content - Desktop */}
-        <div className="space-y-1 overflow-y-auto">
+        {/* Premium Navigation menu content - Desktop */}
+        <div className="space-y-2 overflow-y-auto pr-2 scrollbar-thin">
           {navItems.map((item, index) => (
-            <div key={index}>
+            <div key={index} className="fade-in" style={{ animationDelay: `${index * 50}ms` }}>
               {item.type === 'link' ? (
                 <Link
                   to={item.to}
                   className={
                     navOpen
-                      ? `text-lg font-semibold mt-2 block ${location.pathname === item.to ? 'text-white rounded px-2 py-1 bg-gray-800' : 'text-black hover:text-gray-700'}`
-                      : `text-xs font-semibold text-center mt-2 block ${location.pathname === item.to ? 'text-white rounded px-1 py-1 bg-gray-800' : 'text-black hover:text-gray-700'}`
+                      ? `text-sm font-semibold mt-1 block rounded-xl px-4 py-3 transition-all duration-300 group ${
+                          location.pathname === item.to 
+                            ? 'bg-gradient-to-r from-purple-600 via-purple-500 to-pink-500 text-white shadow-lg shadow-purple-500/30 scale-[1.02]' 
+                            : 'text-gray-700 hover:bg-gradient-to-r hover:from-purple-50 hover:to-pink-50 hover:text-purple-700 hover:scale-[1.01]'
+                        }`
+                      : `text-xs font-semibold text-center mt-1 block rounded-xl py-3 transition-all duration-300 ${
+                          location.pathname === item.to 
+                            ? 'bg-gradient-to-r from-purple-600 to-pink-500 text-white shadow-lg shadow-purple-500/30' 
+                            : 'text-gray-700 hover:bg-gradient-to-r hover:from-purple-50 hover:to-pink-50 hover:text-purple-700'
+                        }`
                   }
                 >
-                  {navOpen ? item.label : <span title={item.label}>{item.icon}</span>}
+                  {navOpen ? (
+                    <div className="flex items-center gap-3">
+                      <span className="text-xl">{item.icon}</span>
+                      <span className="tracking-wide">{item.label}</span>
+                    </div>
+                  ) : (
+                    <span title={item.label} className="text-2xl">{item.icon}</span>
+                  )}
                 </Link>
               ) : (
-                <div className="mt-2">
-                  {/* Menu Header */}
+                <div className="mt-1">
+                  {/* Premium Menu Header */}
                   <button
                     onClick={() => toggleMenu(item.id)}
                     className={
                       navOpen
-                        ? `w-full text-left text-lg font-semibold px-2 py-1 rounded flex items-center justify-between ${
+                        ? `w-full text-left text-sm font-semibold px-4 py-3 rounded-xl flex items-center justify-between transition-all duration-300 group ${
                             item.children?.some(child => location.pathname === child.to)
-                              ? 'text-gray-900 bg-gray-100'
-                              : 'text-black hover:text-gray-700'
+                              ? 'bg-gradient-to-r from-purple-600 via-purple-500 to-pink-500 text-white shadow-lg shadow-purple-500/30 scale-[1.02]'
+                              : expandedMenus[item.id]
+                              ? 'bg-gradient-to-r from-purple-50 to-pink-50 text-purple-700 shadow-sm'
+                              : 'text-gray-700 hover:bg-gradient-to-r hover:from-purple-50 hover:to-pink-50 hover:text-purple-700 hover:scale-[1.01]'
                           }`
-                        : `w-full text-xs font-semibold text-center py-1 rounded ${
+                        : `w-full text-xs font-semibold text-center py-3 rounded-xl transition-all duration-300 ${
                             item.children?.some(child => location.pathname === child.to)
-                              ? 'text-white bg-gray-800'
-                              : 'text-black hover:text-gray-700'
+                              ? 'bg-gradient-to-r from-purple-600 to-pink-500 text-white shadow-lg shadow-purple-500/30'
+                              : 'text-gray-700 hover:bg-gradient-to-r hover:from-purple-50 hover:to-pink-50 hover:text-purple-700'
                           }`
                     }
                   >
                     {navOpen ? (
                       <>
-                        <span className="flex items-center gap-2">
-                          <span>{item.icon}</span>
-                          <span>{item.label}</span>
+                        <span className="flex items-center gap-3">
+                          <span className="text-xl">{item.icon}</span>
+                          <span className="tracking-wide">{item.label}</span>
                         </span>
                         <svg
-                          className={`w-4 h-4 transition-transform ${expandedMenus[item.id] ? 'rotate-180' : ''}`}
+                          className={`w-4 h-4 transition-transform duration-300 ${expandedMenus[item.id] ? 'rotate-180' : ''}`}
                           fill="none"
                           stroke="currentColor"
                           viewBox="0 0 24 24"
                         >
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
                         </svg>
                       </>
                     ) : (
-                      <span title={item.label}>{item.icon}</span>
+                      <span title={item.label} className="text-2xl">{item.icon}</span>
                     )}
                   </button>
                   
-                  {/* Submenu Items - Desktop */}
+                  {/* Premium Submenu Items - Desktop */}
                   {navOpen && expandedMenus[item.id] && (
-                    <div className="ml-4 mt-1 space-y-1">
+                    <div className="ml-4 mt-2 space-y-1.5 slide-in">
                       {item.children?.map((child) => (
                         <Link
                           key={child.to}
                           to={child.to}
-                          className={`block text-base px-3 py-1.5 rounded ${
+                          className={`block text-sm px-4 py-2.5 rounded-lg transition-all duration-300 group ${
                             location.pathname === child.to
-                              ? 'text-white bg-gray-700'
-                              : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+                              ? 'bg-gradient-to-r from-purple-600 to-pink-500 text-white shadow-md shadow-purple-500/20 translate-x-1'
+                              : 'text-gray-600 hover:bg-gradient-to-r hover:from-purple-50 hover:to-pink-50 hover:text-purple-700 hover:translate-x-2 hover:shadow-sm'
                           }`}
                         >
-                          <span className="flex items-center gap-2">
-                            <span>{child.icon}</span>
-                            <span>{child.label}</span>
+                          <span className="flex items-center gap-3">
+                            <span className="text-base">{child.icon}</span>
+                            <span className="font-medium">{child.label}</span>
                           </span>
                         </Link>
                       ))}
@@ -220,26 +253,32 @@ export function Navigation({ navOpen, setNavOpen, currentPage }) {
         </div>
       </nav>
 
-      {/* Mobile Bottom Navigation */}
-      <nav className="mobile-nav fixed bottom-0 left-0 right-0 bg-white border-t-2 border-gray-200 z-50 desktop-hidden">
-        {/* Submenu overlay for mobile - shows when a menu is expanded */}
+      {/* Premium Mobile Bottom Navigation */}
+      <nav className="mobile-nav fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-xl border-t border-gray-200/50 z-50 desktop-hidden" 
+        style={{ 
+          boxShadow: '0 -8px 30px rgba(0, 0, 0, 0.08)',
+          background: 'linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(249,250,251,0.95) 100%)'
+        }}>
+        {/* Premium Submenu overlay for mobile */}
         {Object.entries(expandedMenus).some(([key, value]) => value) && (
-          <div className="absolute bottom-full left-0 right-0 bg-white border-t-2 border-gray-200 shadow-lg">
+          <div className="absolute bottom-full left-0 right-0 bg-white/95 backdrop-blur-xl border-t border-gray-200/50 shadow-2xl">
             {navItems.map((item) => {
               if (item.type === 'menu' && expandedMenus[item.id]) {
                 return (
-                  <div key={item.id} className="flex justify-around py-3 px-2">
+                  <div key={item.id} className="flex justify-around py-3 px-3 gap-2 fade-in">
                     {item.children?.map((child) => (
                       <Link
                         key={child.to}
                         to={child.to}
                         onClick={() => toggleMenu(item.id)}
-                        className={`flex flex-col items-center justify-center px-3 py-2 min-w-0 flex-1 rounded ${
-                          location.pathname === child.to ? 'text-white bg-gray-700' : 'text-gray-700 hover:bg-gray-100'
+                        className={`flex flex-col items-center justify-center px-3 py-2 min-w-0 flex-1 rounded-xl transition-all duration-300 ${
+                          location.pathname === child.to 
+                            ? 'bg-gradient-to-br from-purple-600 via-purple-500 to-pink-500 text-white shadow-xl shadow-purple-500/30 scale-105' 
+                            : 'text-gray-700 hover:bg-gradient-to-br hover:from-purple-50 hover:to-pink-50 active:scale-95'
                         }`}
                       >
-                        <span className="text-2xl mb-1">{child.icon}</span>
-                        <span className="text-xs leading-tight text-center" style={{ fontSize: '0.7rem' }}>
+                        <span className="text-2xl mb-1.5">{child.icon}</span>
+                        <span className="text-xs leading-tight text-center font-semibold tracking-wide" style={{ fontSize: '0.65rem' }}>
                           {child.label}
                         </span>
                       </Link>
@@ -252,8 +291,8 @@ export function Navigation({ navOpen, setNavOpen, currentPage }) {
           </div>
         )}
         
-        {/* Main navigation bar */}
-        <div className="flex items-center justify-around h-full px-2" style={{ height: '70px' }}>
+        {/* Premium Main navigation bar */}
+        <div className="flex items-center justify-around h-full px-3" style={{ height: '60px' }}>
           {navItems.map((item, index) => {
             if (item.type === 'link') {
               const isActive = location.pathname === item.to;
@@ -261,34 +300,39 @@ export function Navigation({ navOpen, setNavOpen, currentPage }) {
                 <Link
                   key={index}
                   to={item.to}
-                  className={`flex flex-col items-center justify-center px-2 py-1 min-w-0 flex-1 rounded ${
-                    isActive ? 'text-white bg-gray-800' : 'text-gray-600'
+                  className={`flex flex-col items-center justify-center px-2 py-1.5 min-w-0 flex-1 rounded-xl transition-all duration-300 ${
+                    isActive 
+                      ? 'bg-gradient-to-br from-purple-600 to-pink-500 text-white shadow-xl shadow-purple-500/30 scale-105' 
+                      : 'text-gray-600 active:scale-95 hover:bg-gradient-to-br hover:from-purple-50 hover:to-pink-50'
                   }`}
                 >
-                  <span className="text-2xl mb-1">{item.icon}</span>
-                  <span className="text-xs leading-tight text-center nav-label" style={{ fontSize: '0.7rem' }}>
+                  <span className="text-xl mb-1">{item.icon}</span>
+                  <span className="text-xs leading-tight text-center nav-label font-semibold tracking-wide" style={{ fontSize: '0.65rem' }}>
                     {item.label}
                   </span>
                 </Link>
               );
             } else {
-              // For menu items, show a button that toggles the submenu
               const isActive = item.children?.some(child => location.pathname === child.to);
               return (
                 <button
                   key={index}
                   onClick={() => toggleMenu(item.id)}
-                  className={`flex flex-col items-center justify-center px-2 py-1 min-w-0 flex-1 rounded ${
-                    isActive ? 'text-white bg-gray-800' : 'text-gray-600'
+                  className={`flex flex-col items-center justify-center px-2 py-1.5 min-w-0 flex-1 rounded-xl transition-all duration-300 ${
+                    isActive 
+                      ? 'bg-gradient-to-br from-purple-600 to-pink-500 text-white shadow-xl shadow-purple-500/30 scale-105' 
+                      : expandedMenus[item.id]
+                      ? 'bg-gradient-to-br from-purple-50 to-pink-50 text-purple-700'
+                      : 'text-gray-600 active:scale-95 hover:bg-gradient-to-br hover:from-purple-50 hover:to-pink-50'
                   }`}
                 >
-                  <span className="text-2xl mb-1">{item.icon}</span>
-                  <span className="text-xs leading-tight text-center nav-label" style={{ fontSize: '0.7rem' }}>
+                  <span className="text-xl mb-1">{item.icon}</span>
+                  <span className="text-xs leading-tight text-center nav-label font-semibold tracking-wide" style={{ fontSize: '0.65rem' }}>
                     {item.label}
                   </span>
                   {expandedMenus[item.id] && (
                     <svg
-                      className="w-3 h-3 mt-0.5"
+                      className="w-2.5 h-2.5 mt-0.5 absolute top-0.5 right-0.5 opacity-70"
                       fill="none"
                       stroke="currentColor"
                       viewBox="0 0 24 24"

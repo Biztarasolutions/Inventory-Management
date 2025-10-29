@@ -1,3 +1,5 @@
+/* Modern Utility Styles */
+
 /* Hide number input spinners */
 input[type="number"]::-webkit-inner-spin-button,
 input[type="number"]::-webkit-outer-spin-button {
@@ -14,3 +16,184 @@ input[type="number"] {
 input[type="number"] {
   user-select: none;
 }
+
+/* Modern Button Styles */
+.btn-modern {
+  @apply px-6 py-3 rounded-lg font-medium transition-all duration-200 ease-in-out;
+  @apply shadow-sm hover:shadow-md active:scale-95;
+}
+
+.btn-primary {
+  @apply bg-blue-600 text-white hover:bg-blue-700;
+}
+
+.btn-secondary {
+  @apply bg-purple-600 text-white hover:bg-purple-700;
+}
+
+.btn-success {
+  @apply bg-green-600 text-white hover:bg-green-700;
+}
+
+.btn-danger {
+  @apply bg-red-600 text-white hover:bg-red-700;
+}
+
+.btn-outline {
+  @apply bg-white text-gray-700 border-2 border-gray-300 hover:border-gray-400 hover:bg-gray-50;
+}
+
+/* Modern Input Styles */
+.input-modern {
+  @apply w-full px-4 py-3 rounded-lg border-2 border-gray-200;
+  @apply focus:border-blue-500 focus:ring-4 focus:ring-blue-100;
+  @apply transition-all duration-200;
+}
+
+.select-modern {
+  @apply w-full px-4 py-3 rounded-lg border-2 border-gray-200;
+  @apply focus:border-blue-500 focus:ring-4 focus:ring-blue-100;
+  @apply transition-all duration-200 cursor-pointer;
+}
+
+/* Modern Card Styles */
+.card-modern {
+  @apply bg-white rounded-xl shadow-sm border border-gray-100;
+  @apply hover:shadow-md transition-all duration-200;
+}
+
+.card-hover {
+  @apply hover:scale-[1.02] hover:-translate-y-1;
+}
+
+/* Modern Table Styles */
+.table-modern {
+  @apply w-full border-collapse;
+}
+
+.table-modern thead {
+  @apply bg-gradient-to-r from-gray-50 to-gray-100;
+}
+
+.table-modern th {
+  @apply px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider;
+  @apply border-b-2 border-gray-200;
+}
+
+.table-modern td {
+  @apply px-6 py-4 text-sm text-gray-900 border-b border-gray-100;
+}
+
+.table-modern tbody tr {
+  @apply hover:bg-blue-50 transition-colors duration-150;
+}
+
+/* Status Badges */
+.badge {
+  @apply inline-flex items-center px-3 py-1 rounded-full text-xs font-medium;
+}
+
+.badge-success {
+  @apply bg-green-100 text-green-800;
+}
+
+.badge-warning {
+  @apply bg-yellow-100 text-yellow-800;
+}
+
+.badge-danger {
+  @apply bg-red-100 text-red-800;
+}
+
+.badge-info {
+  @apply bg-blue-100 text-blue-800;
+}
+
+.badge-primary {
+  @apply bg-purple-100 text-purple-800;
+}
+
+/* Modern Form Group */
+.form-group-modern {
+  @apply mb-6;
+}
+
+.form-label-modern {
+  @apply block text-sm font-semibold text-gray-700 mb-2;
+}
+
+/* Gradient Text */
+.text-gradient-primary {
+  @apply bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent;
+}
+
+.text-gradient-success {
+  @apply bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent;
+}
+
+/* Loading Spinner */
+.spinner {
+  @apply inline-block w-6 h-6 border-4 border-gray-200 border-t-blue-600 rounded-full;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Icon Container */
+.icon-container {
+  @apply w-12 h-12 rounded-lg flex items-center justify-center;
+  @apply bg-gradient-to-br shadow-sm;
+}
+
+.icon-primary {
+  @apply from-blue-500 to-blue-600 text-white;
+}
+
+.icon-success {
+  @apply from-green-500 to-green-600 text-white;
+}
+
+.icon-warning {
+  @apply from-yellow-500 to-yellow-600 text-white;
+}
+
+.icon-danger {
+  @apply from-red-500 to-red-600 text-white;
+}
+
+/* Divider */
+.divider-modern {
+  @apply my-8 h-px bg-gradient-to-r from-transparent via-gray-300 to-transparent;
+}
+
+/* Modern Shadow Utilities */
+.shadow-subtle {
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04);
+}
+
+.shadow-modern {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.shadow-modern-lg {
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+}
+
+/* Glassmorphism Effect */
+.glass-effect {
+  @apply bg-white/80 backdrop-blur-lg border border-white/20;
+}
+
+/* Hover Glow Effect */
+.hover-glow {
+  transition: all 0.3s ease;
+}
+
+.hover-glow:hover {
+  box-shadow: 0 0 20px rgba(59, 130, 246, 0.3);
+}
+
