@@ -1,42 +1,15 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useAuth, USER_ROLES } from '../contexts/AuthContext';
 import { Navigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 
 const AdminPanel = () => {
-  const { hasPermission, session } = useAuth();
+  const { hasPermission } = useAuth();
   const [activeTab, setActiveTab] = useState('invites');
-  const [users, setUsers] = useState([]);
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
-  // Invite new user
-  const inviteUser = async (email, role) => {
-    setLoading(true);
-    setError('');
-    setSuccess('');
-    
-    try {
-      // For now, we'll create a simple invitation by registering the user
-      // In a production app, you might want to use Supabase's invite functionality
-      const { error } = await supabase.auth.admin.inviteUserByEmail(email, {
-        data: { role },
-        redirectTo: `${window.location.origin}/register`
-      });
-
-      if (error) {
-        setError(error.message);
-      } else {
-        setSuccess(`Invitation sent to ${email} successfully!`);
-      }
-    } catch (error) {
-      console.error('Error inviting user:', error);
-      setError('Failed to send invitation');
-    } finally {
-      setLoading(false);
-    }
-  };  // Check if user has admin permission
+  // Check if user has admin permission
   if (!hasPermission(USER_ROLES.ADMIN)) {
     return <Navigate to="/create-bill" replace />;
   }
@@ -139,7 +112,7 @@ const SendInvites = ({ onSuccess, onError }) => {
     try {
       // For Supabase, we'll create a simple user registration
       // Note: In production, you should use Supabase's proper invitation system
-      const { data, error } = await supabase.auth.signUp({
+      const { error } = await supabase.auth.signUp({
         email: formData.email,
         password: 'TempPass123!', // Temporary password - user will need to reset
         options: {
