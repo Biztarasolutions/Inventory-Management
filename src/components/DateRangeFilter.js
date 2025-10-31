@@ -56,7 +56,7 @@ const DateRangeFilter = ({ label, selectedRange, onChange, allDates = [] }) => {
       setStartDate(today);
       setEndDate(today);
     }
-  }, [selectedRange]);
+  }, [selectedRange, startDate, endDate]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -123,15 +123,7 @@ const DateRangeFilter = ({ label, selectedRange, onChange, allDates = [] }) => {
     return 0;
   };
 
-  const getDisplayText = () => {
-    if (!selectedRange || !selectedRange.startDate || !selectedRange.endDate) {
-      return 'All Dates';
-    }
-    if (selectedRange.startDate === selectedRange.endDate) {
-      return selectedRange.startDate;
-    }
-    return `${selectedRange.startDate} to ${selectedRange.endDate}`;
-  };
+
 
   const renderDatePicker = () => (
     <div className="p-4">

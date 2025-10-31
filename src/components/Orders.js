@@ -251,9 +251,6 @@ const Orders = () => {
     const uniqueOrders = new Set();
     let totalSales = 0;
     let totalQuantity = 0;
-    let totalUpiAmount = 0;
-    let totalCashAmount = 0;
-    let totalPayLater = 0;
     let totalNetPayLater = 0;
     
     filteredOrders.forEach(order => {
@@ -261,9 +258,6 @@ const Orders = () => {
       uniqueOrders.add(order.order_no);
       totalSales += (order.total || 0);
       totalQuantity += (order.quantity || 0);
-      totalUpiAmount += (order.upi_amount || 0);
-      totalCashAmount += (order.cash_amount || 0);
-      totalPayLater += (order.pay_later || 0);
       totalNetPayLater += (order.net_pay_later || 0);
     });
     
@@ -272,14 +266,11 @@ const Orders = () => {
       ordersCount: uniqueOrders.size,
       totalSales,
       totalQuantity,
-      totalUpiAmount,
-      totalCashAmount,
-      totalPayLater,
       totalNetPayLater
     };
   };
 
-  const { customersCount, ordersCount, totalSales, totalQuantity, totalUpiAmount, totalCashAmount, totalPayLater, totalNetPayLater } = calculateOrderSummary();
+  const { customersCount, ordersCount, totalSales, totalQuantity, totalNetPayLater } = calculateOrderSummary();
 
   // Using the common formatDateTime function from App.js
 

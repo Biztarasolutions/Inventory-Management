@@ -114,7 +114,6 @@ export default function Expense() {
 
   // Calculate expense summary
   const calculateExpenseSummary = () => {
-    let totalExpenses = filteredExpenses.length;
     let totalAmount = 0;
     const expenseBreakdown = {};
     const distinctExpenses = new Set();
@@ -127,14 +126,13 @@ export default function Expense() {
     });
 
     return { 
-      totalExpenses, 
       totalAmount, 
       distinctExpenseCount: distinctExpenses.size, 
       expenseBreakdown 
     };
   };
 
-  const { totalExpenses, totalAmount, distinctExpenseCount, expenseBreakdown } = calculateExpenseSummary();
+  const { totalAmount, distinctExpenseCount, expenseBreakdown } = calculateExpenseSummary();
 
   // Reset filters function
   const resetAllFilters = () => {

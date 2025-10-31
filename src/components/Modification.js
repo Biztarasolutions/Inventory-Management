@@ -20,7 +20,6 @@ export default function Modification() {
   const [paymentUpi, setPaymentUpi] = useState('');
   const [paymentCash, setPaymentCash] = useState('');
   const [refreshKey, setRefreshKey] = useState(0);
-  const [searchType] = useState('customer'); // Always search by customer
   const [actionType, setActionType] = useState('');
   const [customerOptions, setCustomerOptions] = useState([]);
   const [selectedValue, setSelectedValue] = useState(null);
