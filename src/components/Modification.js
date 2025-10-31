@@ -3,14 +3,14 @@ import { supabase } from '../supabaseClient';
 import SearchableDropdown from './SearchableDropdown';
 
 export default function Modification() {
-  const [selectedReturns, setSelectedReturns] = useState([]);
+  const [returnQuantities, setReturnQuantities] = useState({}); // productId -> quantity to return
 
-  const handleReturnCheckbox = (productId) => {
-    setSelectedReturns(prev =>
-      prev.includes(productId)
-        ? prev.filter(id => id !== productId)
-        : [...prev, productId]
-    );
+  const handleReturnQuantityChange = (productId, quantity) => {
+    const numQuantity = Number(quantity) || 0;
+    setReturnQuantities(prev => ({
+      ...prev,
+      [productId]: numQuantity
+    }));
   };
 
   const [returnProducts, setReturnProducts] = useState([]);
@@ -20,10 +20,9 @@ export default function Modification() {
   const [paymentUpi, setPaymentUpi] = useState('');
   const [paymentCash, setPaymentCash] = useState('');
   const [refreshKey, setRefreshKey] = useState(0);
-  const [searchType, setSearchType] = useState('customer'); // 'customer' or 'order'
-    const [actionType, setActionType] = useState('');
+  const [searchType] = useState('customer'); // Always search by customer
+  const [actionType, setActionType] = useState('');
   const [customerOptions, setCustomerOptions] = useState([]);
-  const [orderOptions, setOrderOptions] = useState([]);
   const [selectedValue, setSelectedValue] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -35,17 +34,10 @@ export default function Modification() {
         setReturnProducts([]);
         return;
       }
-      // Calculate date 15 days ago
-      const fifteenDaysAgo = new Date();
-      fifteenDaysAgo.setDate(fifteenDaysAgo.getDate() - 15);
-      const isoDate = fifteenDaysAgo.toISOString().split('T')[0];
-  let query = supabase.from('Orders').select('order_no, phone_number, product, size, total, pay_later, created_at');
-      if (searchType === 'customer') {
-        query = query.eq('phone_number', selectedValue);
-      } else {
-        query = query.eq('order_no', selectedValue);
-      }
-      query = query.gte('created_at', isoDate);
+      // Fetch all products for the customer (no date filter)
+      let query = supabase.from('Orders').select('order_no, phone_number, product, size, quantity, total, pay_later, created_at');
+      query = query.eq('phone_number', selectedValue);
+      query = query.order('created_at', { ascending: false });
       const { data, error } = await query;
       if (error) {
         setReturnProducts([]);
@@ -53,9 +45,11 @@ export default function Modification() {
         return;
       }
       setReturnProducts(data || []);
+      // Clear previous return quantities when new data is fetched
+      setReturnQuantities({});
     }
     fetchReturnProducts();
-  }, [actionType, selectedValue, searchType, refreshKey]);
+  }, [actionType, selectedValue, refreshKey]);
 
   // When action is Pay Later, fetch totals: orders' pay_later (count once per order) and transactions from likely tables
   useEffect(() => {
@@ -68,8 +62,7 @@ export default function Modification() {
       try {
   // 1) Orders: fetch order_no, pay_later and order_amount for this customer/order
   let ordersQuery = supabase.from('Orders').select('order_no, pay_later, order_amount, customer_name');
-        if (searchType === 'customer') ordersQuery = ordersQuery.eq('phone_number', selectedValue);
-        else ordersQuery = ordersQuery.eq('order_no', selectedValue);
+        ordersQuery = ordersQuery.eq('phone_number', selectedValue);
         const { data: ordersData, error: ordersErr } = await ordersQuery;
         if (ordersErr) throw ordersErr;
         // Sum pay_later once per unique order_no
@@ -91,8 +84,7 @@ export default function Modification() {
         for (const table of candidateTables) {
           try {
             let tquery = supabase.from(table).select('*');
-            if (searchType === 'customer') tquery = tquery.eq('phone_number', selectedValue);
-            else tquery = tquery.eq('order_no', selectedValue);
+            tquery = tquery.eq('phone_number', selectedValue);
             const { data, error } = await tquery;
             if (error) {
               // table might not exist — try next
@@ -150,7 +142,7 @@ export default function Modification() {
             const orderNos = Object.keys(orderMap || {});
             if (orderNos.length > 0) {
               tquery = tquery.in('order_no', orderNos);
-            } else if (searchType === 'customer') {
+            } else {
               // fallback: try matching by phone_no (some schemas use phone_no)
               tquery = tquery.eq('phone_no', selectedValue);
             }
@@ -189,51 +181,34 @@ export default function Modification() {
     }
     fetchTotals();
     return () => { mounted = false; };
-  }, [actionType, selectedValue, searchType, refreshKey]);
+  }, [actionType, selectedValue, refreshKey]);
   // include refreshKey in dependency to allow manual refresh after payments
   
   useEffect(() => {
-    async function fetchOptions() {
+    async function fetchCustomerOptions() {
       setLoading(true);
       setError('');
       try {
-        if (searchType === 'customer') {
-          // Fetch ALL phone_number and customer_name values from Orders table
-          const { data, error } = await supabase
-            .from('Orders')
-            .select('phone_number, customer_name');
-          console.log('Fetched Orders raw response (ALL phone numbers):', { data, error });
-          if (error) throw error;
-          if (!data || !Array.isArray(data)) {
-            console.log('No data returned from Supabase for customer dropdown.');
-          }
-          // Build unique list of phone -> name
-          const phoneToName = {};
-          (data || []).forEach(o => {
-            const ph = o.phone_number && String(o.phone_number).trim();
-            const name = (o.customer_name || '').trim();
-            if (ph) phoneToName[ph] = name || phoneToName[ph] || '';
-          });
-          const customerOptionsArr = Object.keys(phoneToName).map(phone => ({ value: phone, label: phoneToName[phone] ? `${phoneToName[phone]} — ${phone}` : phone }));
-          console.log('customerOptions array:', customerOptionsArr);
-          console.log('FINAL customerOptions:', customerOptionsArr);
-          setCustomerOptions(customerOptionsArr);
-        } else {
-          // Fetch order numbers from Orders table where Return_flag is False or null
-          const { data, error } = await supabase
-            .from('Orders')
-            .select('order_no, Return_flag');
-          if (error) throw error;
-          const filtered = (data || []).filter(o => {
-            const flag = o.Return_flag;
-            if (flag === true) return false;
-            if (typeof flag === 'string' && flag.trim().toLowerCase() === 'true') return false;
-            return true;
-          });
-          const orderNos = filtered.map(o => o.order_no).filter(Boolean).map(String);
-          const uniqueOrderNos = Array.from(new Set(orderNos));
-          setOrderOptions(uniqueOrderNos.map(order_no => ({ value: order_no, label: order_no })));
+        // Fetch ALL phone_number and customer_name values from Orders table
+        const { data, error } = await supabase
+          .from('Orders')
+          .select('phone_number, customer_name');
+        console.log('Fetched Orders raw response (ALL phone numbers):', { data, error });
+        if (error) throw error;
+        if (!data || !Array.isArray(data)) {
+          console.log('No data returned from Supabase for customer dropdown.');
         }
+        // Build unique list of phone -> name
+        const phoneToName = {};
+        (data || []).forEach(o => {
+          const ph = o.phone_number && String(o.phone_number).trim();
+          const name = (o.customer_name || '').trim();
+          if (ph) phoneToName[ph] = name || phoneToName[ph] || '';
+        });
+        const customerOptionsArr = Object.keys(phoneToName).map(phone => ({ value: phone, label: phoneToName[phone] ? `${phoneToName[phone]} — ${phone}` : phone }));
+        console.log('customerOptions array:', customerOptionsArr);
+        console.log('FINAL customerOptions:', customerOptionsArr);
+        setCustomerOptions(customerOptionsArr);
       } catch (err) {
         console.error('Error fetching options:', err);
         setError('Failed to fetch options: ' + err.message);
@@ -241,41 +216,25 @@ export default function Modification() {
         setLoading(false);
       }
     }
-    fetchOptions();
-  }, [searchType]);
+    fetchCustomerOptions();
+  }, []); // Remove searchType dependency since it's always 'customer'
 
   return (
     <div className="p-6 max-w-xl mx-auto">
       <h1 className="text-2xl font-bold mb-4">Modification</h1>
       {/* Test/debug buttons removed */}
       <div className="mb-4">
-        <label className="block text-sm font-medium mb-2">Search By</label>
-        <select
-          className="w-full p-2 border rounded"
-          value={searchType}
-          onChange={e => setSearchType(e.target.value)}
-        >
-          <option value="customer">Customer</option>
-          <option value="order">Order</option>
-        </select>
-      </div>
-      <div className="mb-4">
-        <label className="block text-sm font-medium mb-2">
-          {searchType === 'customer' ? 'Customer' : 'Order'}
-        </label>
+        <label className="block text-sm font-medium mb-2">Customer</label>
         <SearchableDropdown
           value={(() => {
             if (!selectedValue) return null;
-            if (searchType === 'customer') {
-              // find label from customerOptions
-              const opt = (customerOptions || []).find(o => String(o.value) === String(selectedValue));
-              return opt ? { label: opt.label, value: opt.value } : { label: selectedValue, value: selectedValue };
-            }
-            return { label: selectedValue, value: selectedValue };
+            // find label from customerOptions
+            const opt = (customerOptions || []).find(o => String(o.value) === String(selectedValue));
+            return opt ? { label: opt.label, value: opt.value } : { label: selectedValue, value: selectedValue };
           })()}
           onChange={opt => setSelectedValue(opt ? opt.value : (typeof opt === 'string' ? opt : ''))}
-          options={searchType === 'customer' ? customerOptions : orderOptions}
-          placeholder={searchType === 'customer' ? 'Type or select customer (Name — phone)' : 'Type or select order no'}
+          options={customerOptions}
+          placeholder="Type or select customer (Name — phone)"
           allowCustomInput={false}
           className="w-full"
         />
@@ -298,7 +257,7 @@ export default function Modification() {
       {/* Show products for Return action */}
       {actionType === 'Return' && selectedValue && (
         <div className="mt-6">
-          <h2 className="text-lg font-semibold mb-2">Products Purchased in Last 15 Days</h2>
+          <h2 className="text-lg font-semibold mb-2">Customer Purchase History</h2>
           {returnProducts.length === 0 ? (
             <div className="text-gray-500">No products found.</div>
           ) : (
@@ -306,10 +265,13 @@ export default function Modification() {
               <table className="min-w-full border text-sm">
                 <thead>
                   <tr className="bg-gray-100">
-                    <th className="border px-2 py-1">Return</th>
-                    <th className="border px-2 py-1">Product-Size</th>
+                    <th className="border px-2 py-1">Date</th>
+                    <th className="border px-2 py-1">Order No</th>
+                    <th className="border px-2 py-1">Product</th>
+                    <th className="border px-2 py-1">Size</th>
+                    <th className="border px-2 py-1">Quantity</th>
                     <th className="border px-2 py-1">Total</th>
-                    <th className="border px-2 py-1">Pay Later</th>
+                    <th className="border px-2 py-1">Return Qty</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -318,35 +280,163 @@ export default function Modification() {
                     const productId = `${prod.order_no}-${prod.product}-${prod.size}-${idx}`;
                     return (
                       <tr key={productId}>
-                        <td className="border px-2 py-1 text-center">
-                          <input
-                            type="checkbox"
-                            checked={selectedReturns.includes(productId)}
-                            onChange={() => handleReturnCheckbox(productId)}
-                          />
+                        <td className="border px-2 py-1">
+                          {new Date(prod.created_at).toLocaleDateString('en-IN', {
+                            day: '2-digit',
+                            month: '2-digit',
+                            year: 'numeric'
+                          })}
                         </td>
-                        <td className="border px-2 py-1">{prod.product + '-' + prod.size}</td>
-                        <td className="border px-2 py-1">{prod.total}</td>
-                        <td className="border px-2 py-1">{prod.pay_later}</td>
+                        <td className="border px-2 py-1">{prod.order_no}</td>
+                        <td className="border px-2 py-1">{prod.product}</td>
+                        <td className="border px-2 py-1">{prod.size}</td>
+                        <td className="border px-2 py-1">{prod.quantity || 1}</td>
+                        <td className="border px-2 py-1">₹{prod.total}</td>
+                        <td className="border px-2 py-1">
+                          <select
+                            value={returnQuantities[productId] || 0}
+                            onChange={(e) => handleReturnQuantityChange(productId, e.target.value)}
+                            className="w-20 px-2 py-1 border rounded text-center bg-white"
+                          >
+                            {Array.from({ length: (prod.quantity || 1) + 1 }, (_, i) => (
+                              <option key={i} value={i}>
+                                {i}
+                              </option>
+                            ))}
+                          </select>
+                        </td>
                       </tr>
                     );
                   })}
                 </tbody>
               </table>
-              {/* Total Pay Later for this customer (sum once per order) */}
-              {searchType === 'customer' && (
-                <div className="mt-4 p-3 border rounded bg-gray-50">
-                  <strong>Total Pay Later:</strong>{' '}
+              {/* Return Summary */}
+              {Object.values(returnQuantities).some(qty => qty > 0) && (
+                <div className="mt-6 p-4 border rounded bg-blue-50">
+                  <h3 className="text-lg font-semibold mb-3">Return Summary</h3>
+                  
                   {(() => {
-                    // Sum pay_later once per unique order_no
-                    const map = {};
+                    // Calculate totals
+                    let totalNetPayLater = 0;
+                    let totalReturnAmount = 0;
+                    
+                    // Get unique orders and their pay_later amounts
+                    const orderPayLaterMap = {};
                     returnProducts.forEach(p => {
-                      if (!map[p.order_no]) {
-                        map[p.order_no] = Number(p.pay_later) || 0;
+                      if (!orderPayLaterMap[p.order_no]) {
+                        orderPayLaterMap[p.order_no] = Number(p.pay_later) || 0;
                       }
                     });
-                    const total = Object.values(map).reduce((s, v) => s + v, 0);
-                    return `₹${total}`;
+                    totalNetPayLater = Object.values(orderPayLaterMap).reduce((s, v) => s + v, 0);
+                    
+                    // Calculate return amount from items with return quantities > 0
+                    Object.entries(returnQuantities).forEach(([productId, returnQty]) => {
+                      if (returnQty > 0) {
+                        const prod = returnProducts.find((p, idx) => 
+                          `${p.order_no}-${p.product}-${p.size}-${idx}` === productId
+                        );
+                        if (prod) {
+                          const originalQty = prod.quantity || 1;
+                          const unitPrice = (Number(prod.total) || 0) / originalQty;
+                          const returnItemAmount = unitPrice * returnQty;
+                          totalReturnAmount += returnItemAmount;
+                        }
+                      }
+                    });
+                    
+                    const difference = totalNetPayLater - totalReturnAmount;
+                    
+                    return (
+                      <div className="space-y-3">
+                        <div className="flex justify-between items-center">
+                          <span className="font-medium">Net Pay Later:</span>
+                          <span className="font-semibold">₹{totalNetPayLater.toFixed(2)}</span>
+                        </div>
+                        
+                        <div className="flex justify-between items-center">
+                          <span className="font-medium">Return Amount:</span>
+                          <span className="font-semibold text-red-600">₹{totalReturnAmount.toFixed(2)}</span>
+                        </div>
+                        
+                        <hr className="border-gray-300" />
+                        
+                        <div className="flex justify-between items-center text-lg font-bold">
+                          {difference > 0 ? (
+                            <>
+                              <span className="text-orange-600">Amount to Pay:</span>
+                              <span className="text-orange-600">₹{difference.toFixed(2)}</span>
+                            </>
+                          ) : difference < 0 ? (
+                            <>
+                              <span className="text-green-600">Amount Customer Gets Back:</span>
+                              <span className="text-green-600">₹{Math.abs(difference).toFixed(2)}</span>
+                            </>
+                          ) : (
+                            <>
+                              <span className="text-gray-600">No Additional Payment Needed</span>
+                              <span className="text-gray-600">₹0.00</span>
+                            </>
+                          )}
+                        </div>
+                        
+                        <div className="mt-4 text-center">
+                          <button
+                            className={`py-2 px-6 rounded-lg font-medium ${
+                              Object.values(returnQuantities).some(qty => qty > 0)
+                                ? 'bg-red-600 hover:bg-red-700 text-white'
+                                : 'bg-gray-300 text-gray-600 cursor-not-allowed'
+                            }`}
+                            disabled={!Object.values(returnQuantities).some(qty => qty > 0)}
+                            onClick={async () => {
+                              // Handle return process
+                              try {
+                                const returnData = Object.entries(returnQuantities)
+                                  .filter(([productId, returnQty]) => returnQty > 0)
+                                  .map(([productId, returnQty]) => {
+                                    const prod = returnProducts.find((p, idx) => 
+                                      `${p.order_no}-${p.product}-${p.size}-${idx}` === productId
+                                    );
+                                    const originalQty = prod.quantity || 1;
+                                    const unitPrice = (Number(prod.total) || 0) / originalQty;
+                                    const returnAmount = unitPrice * returnQty;
+                                    
+                                    return {
+                                      order_no: prod.order_no,
+                                      product: prod.product,
+                                      size: prod.size,
+                                      original_quantity: originalQty,
+                                      return_quantity: returnQty,
+                                      original_total: prod.total,
+                                      return_amount: returnAmount,
+                                      phone_number: selectedValue,
+                                      created_at: new Date().toISOString()
+                                  };
+                                });
+                                
+                                // Insert return records (assuming you have a returns table)
+                                const { error: returnError } = await supabase
+                                  .from('returns')
+                                  .insert(returnData);
+                                
+                                if (returnError) {
+                                  setError('Failed to process return: ' + returnError.message);
+                                } else {
+                                  // Clear return quantities and refresh
+                                  setReturnQuantities({});
+                                  setRefreshKey(k => k + 1);
+                                  setError('');
+                                  alert('Return processed successfully!');
+                                }
+                              } catch (err) {
+                                setError('Failed to process return: ' + err.message);
+                              }
+                            }}
+                          >
+                            Process Return
+                          </button>
+                        </div>
+                      </div>
+                    );
                   })()}
                 </div>
               )}

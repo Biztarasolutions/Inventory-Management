@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
+import { formatIndianNumber } from '../App';
 import FilterDropdown from './FilterDropdown';
 
 export function StockInventory() {
@@ -100,10 +101,54 @@ export function StockInventory() {
   const filteredData = aggregatedData.filter(item => {
     return (
       (filters.product_name.length === 0 || filters.product_name.includes(item.product_name)) &&
+      (filters.mrp.length === 0 || filters.mrp.includes(item.mrp.toString())) &&
       (filters.sizes.length === 0 || filters.sizes.some(size => Array.from(item.sizes.keys()).includes(size))) &&
       (filters.total_stock.length === 0 || filters.total_stock.includes(item.total_stock.toString()))
     );
   });
+
+  // Function to get dynamic filter options based on current filtered data
+  const getDynamicFilterOptions = (filterKey) => {
+    // Create a temporarily filtered dataset excluding the current filter to avoid empty options
+    const tempFilters = { ...filters };
+    tempFilters[filterKey] = []; // Remove current filter to get all available options
+    
+    const tempFilteredData = aggregatedData.filter(item => {
+      return (
+        (tempFilters.product_name.length === 0 || tempFilters.product_name.includes(item.product_name)) &&
+        (tempFilters.mrp.length === 0 || tempFilters.mrp.includes(item.mrp.toString())) &&
+        (tempFilters.sizes.length === 0 || tempFilters.sizes.some(size => Array.from(item.sizes.keys()).includes(size))) &&
+        (tempFilters.total_stock.length === 0 || tempFilters.total_stock.includes(item.total_stock.toString()))
+      );
+    });
+
+    // Return unique values for the specified filter key
+    switch (filterKey) {
+      case 'product_name':
+        return [...new Set(tempFilteredData.map(item => item.product_name))].sort();
+      case 'mrp':
+        return [...new Set(tempFilteredData.map(item => item.mrp.toString()))].sort((a, b) => Number(a) - Number(b));
+      case 'sizes':
+        const allSizes = [...new Set(tempFilteredData.flatMap(item => 
+          Array.from(item.sizes.entries())
+            .filter(([size, quantity]) => quantity > 0)
+            .map(([size]) => size)
+        ))];
+        return allSizes.sort((a, b) => {
+          const sizeOrder = ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL'];
+          const aIndex = sizeOrder.indexOf(a);
+          const bIndex = sizeOrder.indexOf(b);
+          if (aIndex !== -1 && bIndex !== -1) return aIndex - bIndex;
+          if (aIndex !== -1) return -1;
+          if (bIndex !== -1) return 1;
+          return a.localeCompare(b);
+        });
+      case 'total_stock':
+        return [...new Set(tempFilteredData.map(item => item.total_stock.toString()))].sort((a, b) => Number(a) - Number(b));
+      default:
+        return [];
+    }
+  };
 
   // Apply sorting
   const sortedData = [...filteredData].sort((a, b) => {
@@ -164,14 +209,25 @@ export function StockInventory() {
         <div className="bg-white p-3 rounded-lg shadow-sm mb-2 md:mb-0">
           <h3 className="text-sm font-medium text-gray-700 mb-2">Inventory Summary:</h3>
           <div className="flex flex-wrap gap-3 items-center">
-            <div className="bg-blue-100 px-3 py-1 rounded-md">
-              <span className="font-medium">Total: {total}</span>
+            <div className="bg-blue-500 text-white px-3 py-1 rounded-full shadow">
+              <span className="font-medium">Total: {formatIndianNumber(total)}</span>
             </div>
-            {sortedSizes.map(size => (
-              <div key={size} className="bg-gray-100 px-3 py-1 rounded-md">
-                <span className="font-medium">{size}: {sizeInventory[size]}</span>
-              </div>
-            ))}
+            {sortedSizes.map((size, index) => {
+              const colors = [
+                'bg-green-500 text-white',
+                'bg-purple-500 text-white', 
+                'bg-orange-500 text-white',
+                'bg-pink-500 text-white',
+                'bg-indigo-500 text-white',
+                'bg-teal-500 text-white',
+                'bg-red-500 text-white'
+              ];
+              return (
+                <div key={size} className={`${colors[index % colors.length]} px-3 py-1 rounded-full shadow`}>
+                  <span className="font-medium">{size}: {formatIndianNumber(sizeInventory[size])}</span>
+                </div>
+              );
+            })}
           </div>
         </div>
         <button
@@ -190,7 +246,7 @@ export function StockInventory() {
                 <th className="p-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-b w-[30%] min-w-[150px]">
                   <FilterDropdown
                     label="Product"
-                    options={[...new Set(aggregatedData.map(item => item.product_name))]}
+                    options={getDynamicFilterOptions('product_name')}
                     selectedValues={filters.product_name}
                     onChange={(values) => setFilters(prev => ({ ...prev, product_name: values }))}
                   />
@@ -199,24 +255,17 @@ export function StockInventory() {
                   <span className="text-gray-700 font-medium">Image</span>
                 </th>
                 <th className="p-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-b w-[10%] min-w-[100px]">
-                  <span className="text-gray-700 font-medium">MRP</span>
+                  <FilterDropdown
+                    label="MRP"
+                    options={getDynamicFilterOptions('mrp')}
+                    selectedValues={filters.mrp}
+                    onChange={(values) => setFilters(prev => ({ ...prev, mrp: values }))}
+                  />
                 </th>
                 <th className="p-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-b w-[30%] min-w-[180px]">
                   <FilterDropdown
                     label="Sizes"
-                    options={[...new Set(aggregatedData.flatMap(item => 
-                      Array.from(item.sizes.entries())
-                        .filter(([size, quantity]) => quantity > 0)
-                        .map(([size]) => size)
-                    ))].sort((a, b) => {
-                      const sizeOrder = ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL'];
-                      const aIndex = sizeOrder.indexOf(a);
-                      const bIndex = sizeOrder.indexOf(b);
-                      if (aIndex !== -1 && bIndex !== -1) return aIndex - bIndex;
-                      if (aIndex !== -1) return -1;
-                      if (bIndex !== -1) return 1;
-                      return a.localeCompare(b);
-                    })}
+                    options={getDynamicFilterOptions('sizes')}
                     selectedValues={filters.sizes}
                     onChange={(values) => setFilters(prev => ({ ...prev, sizes: values }))}
                   />
@@ -250,19 +299,19 @@ export function StockInventory() {
                         No image
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-sm text-gray-900">{item.mrp}</td>
+                    <td className="px-4 py-3 text-sm text-gray-900">₹{formatIndianNumber(item.mrp)}</td>
                     <td className="px-4 py-3 text-sm text-gray-900">
                       <div className="flex flex-wrap gap-1.5">
                         {item.available_sizes.map(([size, quantity]) => (
                           quantity > 0 && (
                             <span key={size} className="px-2 py-0.5 bg-gray-100 rounded text-xs">
-                              {size}: {quantity}
+                              {size}: {formatIndianNumber(quantity)}
                             </span>
                           )
                         ))}
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-sm text-gray-900">{item.total_stock}</td>
+                    <td className="px-4 py-3 text-sm text-gray-900">{formatIndianNumber(item.total_stock)}</td>
                   </tr>
                 </React.Fragment>
               ))}

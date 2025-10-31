@@ -4,6 +4,7 @@ import { useSearchParams, Link } from 'react-router-dom';
 
 const Register = ({ onClose }) => {
   const [formData, setFormData] = useState({
+    email: '',
     username: '',
     password: '',
     confirmPassword: ''
@@ -84,7 +85,7 @@ const Register = ({ onClose }) => {
       return;
     }
 
-    const result = await register(inviteToken, formData.username, formData.password);
+    const result = await register(formData.email, formData.username, formData.password, formData.confirmPassword);
     
     if (result.success) {
       setSuccess(true);
@@ -155,6 +156,22 @@ const Register = ({ onClose }) => {
 
             {/* Form */}
             <form onSubmit={handleSubmit} className="space-y-6">
+              <div>
+                <label htmlFor="email" className="block text-sm font-semibold text-gray-700 mb-2">
+                  Email Address
+                </label>
+                <input
+                  type="email"
+                  id="email"
+                  name="email"
+                  value={formData.email}
+                  onChange={handleChange}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white"
+                  placeholder="Enter your email address"
+                  required
+                />
+              </div>
+
               <div>
                 <label htmlFor="username" className="block text-sm font-semibold text-gray-700 mb-2">
                   Username

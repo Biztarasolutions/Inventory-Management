@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
-import { SIZES, fileToBase64, formatDateTime } from '../App';
+import { SIZES, fileToBase64, formatDateTime, formatIndianNumber } from '../App';
 import SearchableDropdown from './SearchableDropdown';
 import FilterDropdown from './FilterDropdown';
+import DateRangeFilter from './DateRangeFilter';
 
 export function AddStocks() {
   // Product Info state
@@ -30,7 +31,8 @@ export function AddStocks() {
     mrp: [],
     size: [],
     quantity: [],
-    note: []
+    note: [],
+    image: []
   });
   
   // Sort state
@@ -40,6 +42,81 @@ export function AddStocks() {
   const [sizes, setSizes] = useState([
     { size: '', quantity: '', note: '' }
   ]);
+
+  // Function to get dynamic filter options based on current filtered data
+  const getDynamicFilterOptions = (filterKey) => {
+    // Create a temporarily filtered dataset excluding the current filter to avoid empty options
+    const tempFilters = { ...historyFilters };
+    tempFilters[filterKey] = []; // Remove current filter to get all available options
+    
+    const tempFilteredData = enrichedInventoryHistory.filter(item => {
+      // Action filter logic - match display logic
+      const displayedAction = item.action || (item.quantity > 0 ? 'Added' : 'Removed');
+      const actionMatch = tempFilters.action.length === 0 || tempFilters.action.includes(displayedAction);
+      
+      // Image filter logic
+      const imageMatch = tempFilters.image.length === 0 || (
+        tempFilters.image.includes('Has Image') ? !!item.image :
+        tempFilters.image.includes('No Image') ? !item.image :
+        true
+      );
+      
+      // Date range filter logic
+      let dateMatch = true;
+      if (tempFilters.datetime && tempFilters.datetime.start && tempFilters.datetime.end) {
+        const itemDate = new Date(item.date);
+        const start = new Date(tempFilters.datetime.start);
+        start.setHours(0, 0, 0, 0);
+        const end = new Date(tempFilters.datetime.end);
+        end.setHours(23, 59, 59, 999);
+        dateMatch = itemDate >= start && itemDate <= end;
+      } else if (Array.isArray(tempFilters.datetime) && tempFilters.datetime.length > 0) {
+        // Fallback for old array-based filtering
+        dateMatch = tempFilters.datetime.includes(item.formatted_date);
+      }
+      
+      return (
+        dateMatch &&
+        actionMatch &&
+        (tempFilters.product_name.length === 0 || tempFilters.product_name.includes(item.product_name)) &&
+        (tempFilters.mrp.length === 0 || tempFilters.mrp.includes(item.mrp_value.toString())) &&
+        (tempFilters.size.length === 0 || tempFilters.size.includes(item.size)) &&
+        (tempFilters.quantity.length === 0 || tempFilters.quantity.includes(item.quantity.toString())) &&
+        (tempFilters.note.length === 0 || tempFilters.note.includes(item.note || '')) &&
+        imageMatch
+      );
+    });
+
+    // Return unique values for the specified filter key
+    switch (filterKey) {
+      case 'action':
+        return [...new Set(tempFilteredData.map(item => 
+          item.action || (item.quantity > 0 ? 'Added' : 'Removed')
+        ))].sort();
+      case 'product_name':
+        return [...new Set(tempFilteredData.map(item => item.product_name).filter(Boolean))].sort();
+      case 'mrp':
+        return [...new Set(tempFilteredData.map(item => item.mrp_value.toString()))].sort((a, b) => Number(a) - Number(b));
+      case 'size':
+        return [...new Set(tempFilteredData.map(item => item.size).filter(Boolean))].sort((a, b) => {
+          const sizeOrder = ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL'];
+          const aIndex = sizeOrder.indexOf(a);
+          const bIndex = sizeOrder.indexOf(b);
+          if (aIndex !== -1 && bIndex !== -1) return aIndex - bIndex;
+          if (aIndex !== -1) return -1;
+          if (bIndex !== -1) return 1;
+          return a.localeCompare(b);
+        });
+      case 'quantity':
+        return [...new Set(tempFilteredData.map(item => item.quantity.toString()))].sort((a, b) => Number(a) - Number(b));
+      case 'note':
+        return [...new Set(tempFilteredData.map(item => item.note || '').filter(note => note !== ''))].sort();
+      case 'image':
+        return ['Has Image', 'No Image'];
+      default:
+        return [];
+    }
+  };
 
   // Fetch data when component mounts
   useEffect(() => {
@@ -81,18 +158,72 @@ export function AddStocks() {
       };
     });
     
+    // Debug: Log sample data to see actual values
+    if (enrichedData.length > 0) {
+      console.log('Sample enriched data:', enrichedData.slice(0, 3).map(item => ({
+        action: item.action,
+        quantity: item.quantity,
+        displayAction: item.action || (item.quantity > 0 ? 'Added' : 'Removed')
+      })));
+    }
+    
     setEnrichedInventoryHistory(enrichedData);
+    
+    // Debug: Log current filter state
+    if (historyFilters.action.length > 0) {
+      console.log('Action filter selected:', historyFilters.action);
+    }
     
     // Apply filters
     const filtered = enrichedData.filter(item => {
+      // Image filter logic
+      let imageMatch = true;
+      if (historyFilters.image.length > 0) {
+        const hasImage = item.image ? 'Has Image' : 'No Image';
+        imageMatch = historyFilters.image.includes(hasImage);
+      }
+      
+      // Action filter logic - match the display logic
+      let actionMatch = true;
+      if (historyFilters.action.length > 0) {
+        const displayedAction = item.action || (item.quantity > 0 ? 'Added' : 'Removed');
+        actionMatch = historyFilters.action.includes(displayedAction);
+        
+        // Debug logging
+        if (historyFilters.action.includes('Added')) {
+          console.log('Checking item for Added filter:', {
+            rawAction: item.action,
+            quantity: item.quantity,
+            displayedAction,
+            matches: actionMatch,
+            filterValues: historyFilters.action
+          });
+        }
+      }
+      
+      // Date range filter logic
+      let dateMatch = true;
+      if (historyFilters.datetime && historyFilters.datetime.start && historyFilters.datetime.end) {
+        const itemDate = new Date(item.date);
+        const start = new Date(historyFilters.datetime.start);
+        start.setHours(0, 0, 0, 0);
+        const end = new Date(historyFilters.datetime.end);
+        end.setHours(23, 59, 59, 999);
+        dateMatch = itemDate >= start && itemDate <= end;
+      } else if (Array.isArray(historyFilters.datetime) && historyFilters.datetime.length > 0) {
+        // Fallback for old array-based filtering
+        dateMatch = historyFilters.datetime.includes(item.formatted_date);
+      }
+      
       return (
-        (historyFilters.datetime.length === 0 || historyFilters.datetime.includes(item.formatted_date)) &&
-        (historyFilters.action.length === 0 || historyFilters.action.includes(item.action)) &&
+        dateMatch &&
+        actionMatch &&
         (historyFilters.product_name.length === 0 || historyFilters.product_name.includes(item.product_name)) &&
         (historyFilters.mrp.length === 0 || historyFilters.mrp.includes(item.mrp_value.toString())) &&
         (historyFilters.size.length === 0 || historyFilters.size.includes(item.size)) &&
         (historyFilters.quantity.length === 0 || historyFilters.quantity.includes(item.quantity.toString())) &&
-        (historyFilters.note.length === 0 || historyFilters.note.includes(item.note || ''))
+        (historyFilters.note.length === 0 || historyFilters.note.includes(item.note || '')) &&
+        imageMatch
       );
     });
 
@@ -132,7 +263,8 @@ export function AddStocks() {
       mrp: [],
       size: [],
       quantity: [],
-      note: []
+      note: [],
+      image: []
     });
     setHistorySortConfig({ key: null, direction: 'asc' });
   };
@@ -405,33 +537,33 @@ export function AddStocks() {
 
       {/* Today's Inventory History */}
       <div className="mt-16">
-        <div className="flex justify-between items-center mb-6">
+        <div className="flex flex-col md:flex-row md:justify-between md:items-center mb-6 space-y-4 md:space-y-0">
           <h2 className="text-2xl font-bold text-gray-800">Today's Inventory History</h2>
           <button
             onClick={resetHistoryFilters}
-            className="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600"
+            className="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600 w-full md:w-auto"
           >
             Clear All Filters
           </button>
         </div>
         
-        <div className="bg-white rounded-lg shadow-md overflow-hidden my-3">
-          <div className="overflow-x-auto max-w-full" style={{ maxHeight: 'calc(100vh - 280px)' }}>
-            <table className="w-full table-fixed md:min-w-[1200px] border-collapse">
+        <div className="bg-white rounded-lg shadow-md my-3" style={{ position: 'relative' }}>
+          <div className="overflow-x-auto max-w-full" style={{ maxHeight: 'calc(100vh - 280px)', overflowY: 'auto' }}>
+            <table className="w-full table-fixed min-w-[800px] border-collapse">
               <thead className="bg-gray-100 sticky top-0 z-30">
                 <tr>
                   <th className="p-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-b min-w-[120px]">
-                    <FilterDropdown
+                    <DateRangeFilter
                       label="Date"
-                      options={[...new Set(enrichedInventoryHistory.map(item => item.formatted_date))]}
-                      selectedValues={historyFilters.datetime}
+                      allDates={[...new Set(enrichedInventoryHistory.map(item => item.formatted_date))]}
+                      selectedRange={historyFilters.datetime}
                       onChange={(values) => setHistoryFilters(prev => ({ ...prev, datetime: values }))}
                     />
                   </th>
                   <th className="p-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-b min-w-[120px]">
                     <FilterDropdown
                       label="Action"
-                      options={['Added', 'Removed', 'Sold']}
+                      options={getDynamicFilterOptions('action')}
                       selectedValues={historyFilters.action}
                       onChange={(values) => setHistoryFilters(prev => ({ ...prev, action: values }))}
                     />
@@ -439,40 +571,47 @@ export function AddStocks() {
                   <th className="p-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-b min-w-[120px]">
                     <FilterDropdown
                       label="Product"
-                      options={[...new Set(enrichedInventoryHistory.map(item => item.product_name).filter(Boolean))]}
+                      options={getDynamicFilterOptions('product_name')}
                       selectedValues={historyFilters.product_name}
                       onChange={(values) => setHistoryFilters(prev => ({ ...prev, product_name: values }))}
                     />
                   </th>
-                  <th className="p-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-b">
-                    <span className="text-gray-700 font-medium">Image</span>
+                  <th className="p-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-b min-w-[120px]">
+                    <FilterDropdown
+                      label="Image"
+                      options={getDynamicFilterOptions('image')}
+                      selectedValues={historyFilters.image || []}
+                      onChange={(values) => setHistoryFilters(prev => ({ ...prev, image: values }))}
+                    />
                   </th>
-                  <th className="p-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-b">
-                    <span className="text-gray-700 font-medium">MRP</span>
+                  <th className="p-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-b min-w-[120px]">
+                    <FilterDropdown
+                      label="MRP"
+                      options={getDynamicFilterOptions('mrp')}
+                      selectedValues={historyFilters.mrp}
+                      onChange={(values) => setHistoryFilters(prev => ({ ...prev, mrp: values }))}
+                    />
                   </th>
                   <th className="p-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-b min-w-[120px]">
                     <FilterDropdown
                       label="Size"
-                      options={[...new Set(enrichedInventoryHistory.map(item => item.size))].sort((a, b) => {
-                        const sizeOrder = ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL'];
-                        const aIndex = sizeOrder.indexOf(a);
-                        const bIndex = sizeOrder.indexOf(b);
-                        if (aIndex !== -1 && bIndex !== -1) return aIndex - bIndex;
-                        if (aIndex !== -1) return -1;
-                        if (bIndex !== -1) return 1;
-                        return a.localeCompare(b);
-                      })}
+                      options={getDynamicFilterOptions('size')}
                       selectedValues={historyFilters.size}
                       onChange={(values) => setHistoryFilters(prev => ({ ...prev, size: values }))}
                     />
                   </th>
-                  <th className="p-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-b">
-                    <span className="text-gray-700 font-medium">Quantity</span>
+                  <th className="p-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-b min-w-[120px]">
+                    <FilterDropdown
+                      label="Quantity"
+                      options={getDynamicFilterOptions('quantity')}
+                      selectedValues={historyFilters.quantity}
+                      onChange={(values) => setHistoryFilters(prev => ({ ...prev, quantity: values }))}
+                    />
                   </th>
                   <th className="p-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-b min-w-[120px]">
                     <FilterDropdown
                       label="Note"
-                      options={[...new Set(enrichedInventoryHistory.map(item => item.note || '').filter(note => note !== ''))]}
+                      options={getDynamicFilterOptions('note')}
                       selectedValues={historyFilters.note}
                       onChange={(values) => setHistoryFilters(prev => ({ ...prev, note: values }))}
                     />
@@ -514,9 +653,9 @@ export function AddStocks() {
                         No image
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-sm text-gray-900">₹{entry.mrp_value}</td>
+                    <td className="px-4 py-3 text-sm text-gray-900">₹{formatIndianNumber(entry.mrp_value)}</td>
                     <td className="px-4 py-3 text-sm text-gray-900">{entry.size}</td>
-                    <td className="px-4 py-3 text-sm text-gray-900">{entry.quantity}</td>
+                    <td className="px-4 py-3 text-sm text-gray-900">{formatIndianNumber(entry.quantity)}</td>
                     <td className="px-4 py-3 text-sm text-gray-900">{entry.note}</td>
                   </tr>
                 ))}

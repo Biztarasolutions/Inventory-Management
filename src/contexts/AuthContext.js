@@ -83,40 +83,77 @@ export const AuthProvider = ({ children }) => {
   };
 
   // Login function
-  const login = async (email, password) => {
+  const login = async (username, password) => {
     try {
+      console.log('🔍 Starting login with username:', username);
+      
+      // First, try to find the email associated with this username
+      const { data: profileData, error: profileError } = await supabase
+        .from('profiles')
+        .select('email')
+        .eq('username', username)
+        .single();
+
+      console.log('📊 Profile query result:', { profileData, profileError });
+
+      let emailToUse = username; // If username is actually an email
+
+      if (profileData && profileData.email) {
+        // Found username, use the associated email
+        emailToUse = profileData.email;
+        console.log('✅ Found email for username:', username, '→', emailToUse);
+      } else if (!username.includes('@')) {
+        // Username provided but not found in database
+        console.log('❌ Username not found in profiles:', username);
+        console.log('❌ Profile error:', profileError);
+        return { success: false, error: 'Invalid username or password' };
+      }
+
       const { data, error } = await supabase.auth.signInWithPassword({
-        email,
+        email: emailToUse,
         password,
       });
 
       if (error) {
-        return { success: false, message: error.message };
+        return { success: false, error: error.message };
       }
 
+      const enrichedUser = await enrichUserData(data.user);
       setSession(data.session);
-      setUser(data.user);
+      setUser(enrichedUser);
       return { success: true };
     } catch (error) {
       console.error('Login error:', error);
-      return { success: false, message: 'Network error. Please try again.' };
+      return { success: false, error: 'Network error. Please try again.' };
     }
   };
 
   // Register function (for invited users)
-  const register = async (email, password, confirmPassword, role = USER_ROLES.EMPLOYEE, name = '') => {
+  const register = async (email, username, password, confirmPassword, role = USER_ROLES.EMPLOYEE, name = '') => {
     if (password !== confirmPassword) {
       return { success: false, message: 'Passwords do not match' };
     }
 
     try {
+      // Check if username already exists
+      const { data: existingUser } = await supabase
+        .from('profiles')
+        .select('username')
+        .eq('username', username)
+        .single();
+
+      if (existingUser) {
+        return { success: false, message: 'Username already exists. Please choose a different username.' };
+      }
+
       const { error } = await supabase.auth.signUp({
         email,
         password,
         options: {
           data: {
             role,
-            name,
+            name: name || username,
+            username,
             status: 'active'
           }
         }
@@ -164,6 +201,30 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  // Enrich user data with profile information
+  const enrichUserData = async (user) => {
+    if (!user) return null;
+    
+    try {
+      const { data: profileData } = await supabase
+        .from('profiles')
+        .select('username, name, role, status')
+        .eq('id', user.id)
+        .single();
+      
+      return {
+        ...user,
+        username: profileData?.username,
+        name: profileData?.name,
+        role: profileData?.role,
+        status: profileData?.status
+      };
+    } catch (error) {
+      console.error('Error fetching profile data:', error);
+      return user;
+    }
+  };
+
   // Initialize auth session
   const initializeAuth = useCallback(async () => {
     try {
@@ -172,8 +233,9 @@ export const AuthProvider = ({ children }) => {
       if (error) {
         console.error('Error getting session:', error);
       } else if (session) {
+        const enrichedUser = await enrichUserData(session.user);
         setSession(session);
-        setUser(session.user);
+        setUser(enrichedUser);
       }
     } catch (error) {
       console.error('Error initializing auth:', error);
@@ -187,9 +249,15 @@ export const AuthProvider = ({ children }) => {
     initializeAuth();
 
     // Listen for auth state changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      setSession(session);
-      setUser(session?.user ?? null);
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (session?.user) {
+        const enrichedUser = await enrichUserData(session.user);
+        setSession(session);
+        setUser(enrichedUser);
+      } else {
+        setSession(session);
+        setUser(null);
+      }
       setLoading(false);
     });
 

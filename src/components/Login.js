@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 
 const Login = ({ onClose }) => {
   const [formData, setFormData] = useState({
-    email: '',
+    username: '',
     password: ''
   });
   const [error, setError] = useState('');
@@ -24,13 +24,13 @@ const Login = ({ onClose }) => {
     setLoading(true);
     setError('');
 
-    if (!formData.email || !formData.password) {
+    if (!formData.username || !formData.password) {
       setError('Please fill in all fields');
       setLoading(false);
       return;
     }
 
-    const result = await login(formData.email, formData.password);
+    const result = await login(formData.username, formData.password);
     
     if (result.success) {
       if (onClose) onClose(); // Close modal if it's a modal
@@ -80,17 +80,17 @@ const Login = ({ onClose }) => {
         {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-6">
           <div>
-            <label htmlFor="email" className="block text-sm font-semibold text-gray-700 mb-2">
-              Email Address
+            <label htmlFor="username" className="block text-sm font-semibold text-gray-700 mb-2">
+              Username
             </label>
             <input
-              type="email"
-              id="email"
-              name="email"
-              value={formData.email}
+              type="text"
+              id="username"
+              name="username"
+              value={formData.username}
               onChange={handleChange}
               className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white"
-              placeholder="Enter your email"
+              placeholder="Enter your username"
               required
             />
           </div>

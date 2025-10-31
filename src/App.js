@@ -52,6 +52,16 @@ export function formatDateTime(dateString) {
   }
 }
 
+// Helper function to format numbers in Indian number system
+export function formatIndianNumber(number) {
+  if (number === null || number === undefined || isNaN(number)) {
+    return '0';
+  }
+  
+  const num = Math.round(Number(number));
+  return num.toLocaleString('en-IN');
+}
+
 // Page name mapping for navigation
 const pageNames = {
   "/create-bill": "Create Bill",
@@ -113,20 +123,22 @@ function AppContent({ navOpen, setNavOpen }) {
               </ProtectedRoute>
             } />
 
-            {/* Owner and Admin only routes */}
-            <Route path="/orders" element={
-              <ProtectedRoute requiredRole={USER_ROLES.OWNER}>
-                <Orders />
-              </ProtectedRoute>
-            } />
+            {/* Stock Management - Available to all employees */}
             <Route path="/add-stocks" element={
-              <ProtectedRoute requiredRole={USER_ROLES.OWNER}>
+              <ProtectedRoute requiredRole={USER_ROLES.EMPLOYEE}>
                 <AddStocks />
               </ProtectedRoute>
             } />
             <Route path="/stock-inventory" element={
-              <ProtectedRoute requiredRole={USER_ROLES.OWNER}>
+              <ProtectedRoute requiredRole={USER_ROLES.EMPLOYEE}>
                 <StockInventory />
+              </ProtectedRoute>
+            } />
+
+            {/* Owner and Admin only routes */}
+            <Route path="/orders" element={
+              <ProtectedRoute requiredRole={USER_ROLES.OWNER}>
+                <Orders />
               </ProtectedRoute>
             } />
             <Route path="/stock-history" element={

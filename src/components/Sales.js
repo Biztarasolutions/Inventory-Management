@@ -6,7 +6,6 @@ import SearchableDropdown from './SearchableDropdown';
 const PAYMENT_MODES = [
   { label: 'Cash', value: 'cash' },
   { label: 'UPI', value: 'upi' },
-  { label: 'Pay Later', value: 'pay_later' },
 ];
 
 

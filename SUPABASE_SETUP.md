@@ -11,6 +11,8 @@ First, you need to set up the user profiles table in your Supabase database. Go 
 CREATE TABLE public.profiles (
   id UUID REFERENCES auth.users(id) PRIMARY KEY,
   name TEXT,
+  username TEXT UNIQUE NOT NULL,
+  email TEXT,
   role TEXT DEFAULT 'employee' CHECK (role IN ('admin', 'owner', 'employee')),
   status TEXT DEFAULT 'active' CHECK (status IN ('active', 'inactive', 'pending')),
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
@@ -47,10 +49,12 @@ CREATE POLICY "Admins can update all profiles" ON public.profiles
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS trigger AS $$
 BEGIN
-  INSERT INTO public.profiles (id, name, role, status)
+  INSERT INTO public.profiles (id, name, username, email, role, status)
   VALUES (
     NEW.id,
-    COALESCE(NEW.raw_user_meta_data->>'name', NEW.email),
+    COALESCE(NEW.raw_user_meta_data->>'name', 'User'),
+    COALESCE(NEW.raw_user_meta_data->>'username', NEW.email),
+    NEW.email,
     COALESCE(NEW.raw_user_meta_data->>'role', 'employee'),
     COALESCE(NEW.raw_user_meta_data->>'status', 'active')
   );

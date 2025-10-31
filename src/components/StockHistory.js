@@ -1,14 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
-import { formatDateTime } from '../App';
+import { formatDateTime, formatIndianNumber } from '../App';
 import FilterDropdown from './FilterDropdown';
+import DateRangeFilter from './DateRangeFilter';
 
 export function StockHistory() {
   const [inventory, setInventory] = useState([]);
   
   // Filter states with proper initialization
   const [filters, setFilters] = useState({
-    datetime: [],
+    datetime: null, // Changed to null for DateRangeFilter
     action: [],
     product_name: [],
     mrp: [],
@@ -42,10 +43,23 @@ export function StockHistory() {
 
   // Apply filters
   const filteredData = enrichedData.filter(item => {
-    const action = item.action || (item.quantity > 0 ? 'Added' : 'Removed');
+    // Action filter logic - match the display logic exactly
+    const displayedAction = item.action === 'sold' ? 'Sold' : (item.quantity > 0 ? 'Added' : 'Removed');
+    
+    // Date range filter logic
+    let dateMatch = true;
+    if (filters.datetime && filters.datetime.startDate && filters.datetime.endDate) {
+      const itemDate = new Date(item.date);
+      const start = new Date(filters.datetime.startDate);
+      start.setHours(0, 0, 0, 0);
+      const end = new Date(filters.datetime.endDate);
+      end.setHours(23, 59, 59, 999);
+      dateMatch = itemDate >= start && itemDate <= end;
+    }
+    
     return (
-      (filters.datetime.length === 0 || filters.datetime.includes(item.formatted_date)) &&
-      (filters.action.length === 0 || filters.action.includes(action)) &&
+      dateMatch &&
+      (filters.action.length === 0 || filters.action.includes(displayedAction)) &&
       (filters.product_name.length === 0 || filters.product_name.includes(item.product_name)) &&
       (filters.mrp.length === 0 || filters.mrp.includes(item.mrp_value.toString())) &&
       (filters.size.length === 0 || filters.size.includes(item.size)) &&
@@ -53,6 +67,67 @@ export function StockHistory() {
       (filters.note.length === 0 || filters.note.includes(item.note || ''))
     );
   });
+
+  // Function to get dynamic filter options based on current filtered data
+  const getDynamicFilterOptions = (filterKey) => {
+    // Create a temporarily filtered dataset excluding the current filter to avoid empty options
+    const tempFilters = { ...filters };
+    tempFilters[filterKey] = []; // Remove current filter to get all available options
+    
+    const tempFilteredData = enrichedData.filter(item => {
+      // Action filter logic - match the display logic exactly
+      const displayedAction = item.action === 'sold' ? 'Sold' : (item.quantity > 0 ? 'Added' : 'Removed');
+      
+      // Date range filter logic
+      let dateMatch = true;
+      if (tempFilters.datetime && tempFilters.datetime.startDate && tempFilters.datetime.endDate) {
+        const itemDate = new Date(item.date);
+        const start = new Date(tempFilters.datetime.startDate);
+        start.setHours(0, 0, 0, 0);
+        const end = new Date(tempFilters.datetime.endDate);
+        end.setHours(23, 59, 59, 999);
+        dateMatch = itemDate >= start && itemDate <= end;
+      }
+      
+      return (
+        dateMatch &&
+        (tempFilters.action.length === 0 || tempFilters.action.includes(displayedAction)) &&
+        (tempFilters.product_name.length === 0 || tempFilters.product_name.includes(item.product_name)) &&
+        (tempFilters.mrp.length === 0 || tempFilters.mrp.includes(item.mrp_value.toString())) &&
+        (tempFilters.size.length === 0 || tempFilters.size.includes(item.size)) &&
+        (tempFilters.quantity.length === 0 || tempFilters.quantity.includes(item.quantity.toString())) &&
+        (tempFilters.note.length === 0 || tempFilters.note.includes(item.note || ''))
+      );
+    });
+
+    // Return unique values for the specified filter key
+    switch (filterKey) {
+      case 'action':
+        return [...new Set(tempFilteredData.map(item => 
+          item.action === 'sold' ? 'Sold' : (item.quantity > 0 ? 'Added' : 'Removed')
+        ))].sort();
+      case 'product_name':
+        return [...new Set(tempFilteredData.map(item => item.product_name))].sort();
+      case 'mrp':
+        return [...new Set(tempFilteredData.map(item => item.mrp_value.toString()))].sort((a, b) => Number(a) - Number(b));
+      case 'size':
+        return [...new Set(tempFilteredData.map(item => item.size))].sort((a, b) => {
+          const sizeOrder = ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL'];
+          const aIndex = sizeOrder.indexOf(a);
+          const bIndex = sizeOrder.indexOf(b);
+          if (aIndex !== -1 && bIndex !== -1) return aIndex - bIndex;
+          if (aIndex !== -1) return -1;
+          if (bIndex !== -1) return 1;
+          return a.localeCompare(b);
+        });
+      case 'quantity':
+        return [...new Set(tempFilteredData.map(item => item.quantity.toString()))].sort((a, b) => Number(a) - Number(b));
+      case 'note':
+        return [...new Set(tempFilteredData.map(item => item.note || '').filter(note => note !== ''))].sort();
+      default:
+        return [];
+    }
+  };
 
   // Apply sorting
   const sortedData = [...filteredData].sort((a, b) => {
@@ -78,7 +153,7 @@ export function StockHistory() {
 
   const resetAllFilters = () => {
     setFilters({
-      datetime: [],
+      datetime: null, // Changed to null for DateRangeFilter
       action: [],
       product_name: [],
       mrp: [],
@@ -89,11 +164,82 @@ export function StockHistory() {
     setSortConfig({ key: null, direction: 'asc' });
   };
   
+  // Calculate inventory summary from filtered data
+  const calculateInventorySummary = () => {
+    let totalEntries = filteredData.length;
+    let totalQuantity = 0;
+    let addedQuantity = 0;
+    let removedQuantity = 0;
+    let soldQuantity = 0;
+    const sizeInventory = {};
+    
+    filteredData.forEach(item => {
+      const quantity = Math.abs(item.quantity || 0);
+      const displayedAction = item.action === 'sold' ? 'Sold' : (item.quantity > 0 ? 'Added' : 'Removed');
+      
+      totalQuantity += quantity;
+      
+      if (displayedAction === 'Added') {
+        addedQuantity += quantity;
+      } else if (displayedAction === 'Removed') {
+        removedQuantity += quantity;
+      } else if (displayedAction === 'Sold') {
+        soldQuantity += quantity;
+      }
+      
+      // Size breakdown
+      const size = item.size;
+      if (size) {
+        sizeInventory[size] = (sizeInventory[size] || 0) + quantity;
+      }
+    });
+    
+    return { totalEntries, totalQuantity, addedQuantity, removedQuantity, soldQuantity, sizeInventory };
+  };
+
+  const { totalEntries, totalQuantity, addedQuantity, removedQuantity, soldQuantity, sizeInventory } = calculateInventorySummary();
+  
+  // Sort sizes for display
+  const sortedSizes = Object.keys(sizeInventory).sort((a, b) => {
+    const sizeOrder = ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL'];
+    const aIndex = sizeOrder.indexOf(a);
+    const bIndex = sizeOrder.indexOf(b);
+    if (aIndex !== -1 && bIndex !== -1) return aIndex - bIndex;
+    if (aIndex !== -1) return -1;
+    if (bIndex !== -1) return 1;
+    return a.localeCompare(b);
+  });
+
   return (
     <div className="p-6 pl-2">
       <h1 className="text-2xl font-bold mb-4">Stock History</h1>
       
-      <div className="flex justify-end items-center mb-6">
+      <div className="flex flex-wrap justify-between items-center mb-6">
+        <div className="bg-white p-3 rounded-lg shadow-sm mb-2 md:mb-0">
+          <h3 className="text-sm font-medium text-gray-700 mb-2">Inventory Summary:</h3>
+          <div className="flex flex-wrap gap-3 items-center">
+            <div className="bg-blue-100 px-3 py-1 rounded-md">
+              <span className="font-medium">Entries: {formatIndianNumber(totalEntries)}</span>
+            </div>
+            <div className="bg-green-100 px-3 py-1 rounded-md">
+              <span className="font-medium">Added: {formatIndianNumber(addedQuantity)}</span>
+            </div>
+            <div className="bg-red-100 px-3 py-1 rounded-md">
+              <span className="font-medium">Removed: {formatIndianNumber(removedQuantity)}</span>
+            </div>
+            <div className="bg-yellow-100 px-3 py-1 rounded-md">
+              <span className="font-medium">Sold: {formatIndianNumber(soldQuantity)}</span>
+            </div>
+            <div className="bg-purple-100 px-3 py-1 rounded-md">
+              <span className="font-medium">Total Qty: {formatIndianNumber(totalQuantity)}</span>
+            </div>
+            {sortedSizes.map(size => (
+              <div key={size} className="bg-gray-100 px-3 py-1 rounded-md">
+                <span className="font-medium">{size}: {formatIndianNumber(sizeInventory[size])}</span>
+              </div>
+            ))}
+          </div>
+        </div>
         <button
           onClick={resetAllFilters}
           className="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600"
@@ -108,17 +254,17 @@ export function StockHistory() {
             <thead className="bg-gray-100 sticky top-0 z-10">
               <tr>
                 <th className="p-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-b min-w-[120px]">
-                  <FilterDropdown
+                  <DateRangeFilter
                     label="Date"
-                    options={[...new Set(enrichedData.map(item => item.formatted_date))]}
-                    selectedValues={filters.datetime}
+                    allDates={[...new Set(enrichedData.map(item => item.formatted_date))]}
+                    selectedRange={filters.datetime}
                     onChange={(values) => setFilters(prev => ({ ...prev, datetime: values }))}
                   />
                 </th>
                 <th className="p-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-b min-w-[120px]">
                   <FilterDropdown
                     label="Action"
-                    options={['Added', 'Removed', 'Sold']}
+                    options={getDynamicFilterOptions('action')}
                     selectedValues={filters.action}
                     onChange={(values) => setFilters(prev => ({ ...prev, action: values }))}
                   />
@@ -126,37 +272,39 @@ export function StockHistory() {
                 <th className="p-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-b min-w-[120px]">
                   <FilterDropdown
                     label="Product"
-                    options={[...new Set(enrichedData.map(item => item.product_name).filter(Boolean))]}
+                    options={getDynamicFilterOptions('product_name')}
                     selectedValues={filters.product_name}
                     onChange={(values) => setFilters(prev => ({ ...prev, product_name: values }))}
                   />
                 </th>
-                <th className="p-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-b">
-                  <span className="text-gray-700 font-medium">MRP</span>
+                <th className="p-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-b min-w-[120px]">
+                  <FilterDropdown
+                    label="MRP"
+                    options={getDynamicFilterOptions('mrp')}
+                    selectedValues={filters.mrp}
+                    onChange={(values) => setFilters(prev => ({ ...prev, mrp: values }))}
+                  />
                 </th>
                 <th className="p-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-b min-w-[120px]">
                   <FilterDropdown
                     label="Size"
-                    options={[...new Set(enrichedData.map(item => item.size))].sort((a, b) => {
-                      const sizeOrder = ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL'];
-                      const aIndex = sizeOrder.indexOf(a);
-                      const bIndex = sizeOrder.indexOf(b);
-                      if (aIndex !== -1 && bIndex !== -1) return aIndex - bIndex;
-                      if (aIndex !== -1) return -1;
-                      if (bIndex !== -1) return 1;
-                      return a.localeCompare(b);
-                    })}
+                    options={getDynamicFilterOptions('size')}
                     selectedValues={filters.size}
                     onChange={(values) => setFilters(prev => ({ ...prev, size: values }))}
                   />
                 </th>
-                <th className="p-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-b">
-                  <span className="text-gray-700 font-medium">Quantity</span>
+                <th className="p-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-b min-w-[120px]">
+                  <FilterDropdown
+                    label="Quantity"
+                    options={getDynamicFilterOptions('quantity')}
+                    selectedValues={filters.quantity}
+                    onChange={(values) => setFilters(prev => ({ ...prev, quantity: values }))}
+                  />
                 </th>
                 <th className="p-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-b min-w-[120px]">
                   <FilterDropdown
                     label="Note"
-                    options={[...new Set(enrichedData.map(item => item.note || '').filter(note => note !== ''))]}
+                    options={getDynamicFilterOptions('note')}
                     selectedValues={filters.note}
                     onChange={(values) => setFilters(prev => ({ ...prev, note: values }))}
                   />
@@ -179,9 +327,9 @@ export function StockHistory() {
                     </span>
                   </td>
                   <td className="px-4 py-3 text-sm text-gray-900">{item.product_name}</td>
-                  <td className="px-4 py-3 text-sm text-gray-900">₹{item.mrp_value}</td>
-                  <td className="px-4 py-3 text-sm text-gray-900">{item.size}</td>
-                  <td className="px-4 py-3 text-sm text-gray-900">{item.quantity}</td>
+                  <td className="px-4 py-3 text-sm text-gray-900">₹{formatIndianNumber(item.mrp_value)}</td>
+                  <td className="px-4 py-3 text-small text-gray-900">{item.size}</td>
+                  <td className="px-4 py-3 text-sm text-gray-900">{formatIndianNumber(item.quantity)}</td>
                   <td className="px-4 py-3 text-sm text-gray-900">{item.note}</td>
                 </tr>
               ))}

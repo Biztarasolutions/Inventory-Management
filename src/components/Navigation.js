@@ -3,6 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { useAuth, USER_ROLES } from '../contexts/AuthContext';
 import Login from './Login';
 import PasswordReset from './PasswordReset';
+import StockInventoryIcon from './icons/StockInventoryIcon';
 
 export function Navigation({ navOpen, setNavOpen, currentPage }) {
   const [sidebarWidth, setSidebarWidth] = useState(200);
@@ -36,16 +37,16 @@ export function Navigation({ navOpen, setNavOpen, currentPage }) {
       id: 'stockManagement',
       label: 'Stock Management',
       icon: '📦',
-      requiredRole: USER_ROLES.OWNER, // Only Owner and Admin
+      requiredRole: USER_ROLES.EMPLOYEE, // Available to all roles
       children: [
         { to: '/add-stocks', label: 'Add Stocks', icon: '📦' },
-        { to: '/stock-inventory', label: 'Stock Inventory', icon: <img src="/stock%20inventory.png" alt="Stock Inventory" style={{ width: 22, height: 22, display: 'inline', verticalAlign: 'middle' }} /> },
+        { to: '/stock-inventory', label: 'Stock Inventory', icon: <StockInventoryIcon /> },
       ]
     },
     {
       type: 'menu',
       id: 'history',
-      label: 'History',
+      label: 'Reports & History',
       icon: '📊',
       requiredRole: USER_ROLES.OWNER, // Only Owner and Admin
       children: [
@@ -145,23 +146,12 @@ export function Navigation({ navOpen, setNavOpen, currentPage }) {
           <div className="flex items-center space-x-4">
             {isAuthenticated() ? (
               <>
-                {/* Show Admin Panel button for Admin users */}
-                {user?.user_metadata?.role === USER_ROLES.ADMIN && (
-                  <Link
-                    to="/admin-panel"
-                    className="hidden md:block bg-white/10 hover:bg-white/20 px-3 py-2 rounded-lg backdrop-blur-sm border border-white/20 text-sm font-medium text-white/90 transition-all duration-200 hover:scale-105"
-                  >
-                    Admin Panel
-                  </Link>
-                )}
+
                 
-                {/* Current page name */}
-                <span className="text-sm font-normal text-white/70">{currentPage}</span>
-                
-                {/* User greeting and logout */}
+                {/* Username display and logout */}
                 <div className="relative group">
-                  <button className="flex items-center space-x-2 bg-white/10 hover:bg-white/20 px-3 py-2 rounded-lg backdrop-blur-sm border border-white/20 text-sm font-medium text-white/90 transition-all duration-200">
-                    <span>Hi, {user?.name || user?.username}</span>
+                  <button className="flex items-center space-x-2 bg-white/10 hover:bg-white/20 px-3 py-2 rounded-lg backdrop-blur-sm border border-white/20 text-xs font-medium text-white/90 transition-all duration-200">
+                    <span>{user?.username || user?.name || 'User'}</span>
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                     </svg>
@@ -190,16 +180,7 @@ export function Navigation({ navOpen, setNavOpen, currentPage }) {
               </>
             ) : (
               <>
-                {/* Current page name */}
-                <span className="text-sm font-normal text-white/70">{currentPage}</span>
-                
-                {/* Login button */}
-                <button
-                  onClick={() => setShowLogin(true)}
-                  className="bg-white/10 hover:bg-white/20 px-4 py-2 rounded-lg backdrop-blur-sm border border-white/20 text-sm font-medium text-white/90 transition-all duration-200 hover:scale-105"
-                >
-                  Login
-                </button>
+                {/* Empty space when not authenticated - sign in handled by ProtectedRoute */}
               </>
             )}
           </div>

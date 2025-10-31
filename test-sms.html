@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SMS Test - Fashion Boutique</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+            max-width: 500px;
+            margin: 50px auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e1e5e9;
+            border-radius: 12px;
+            font-size: 16px;
+            margin-bottom: 20px;
+            box-sizing: border-box;
+        }
+        button {
+            width: 100%;
+            padding: 12px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-bottom: 10px;
+        }
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+        }
+        .status {
+            padding: 15px;
+            border-radius: 12px;
+            margin-top: 20px;
+            font-weight: 500;
+        }
+        .success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📱 SMS Configuration Test</h1>
+        
+        <input 
+            type="tel" 
+            id="phoneNumber" 
+            placeholder="+1234567890 (with country code)"
+            value="+1"
+        />
+        
+        <button onclick="testSMS()">Send Test SMS</button>
+        
+        <div id="status"></div>
+        
+        <div style="margin-top: 30px; padding: 20px; background: #f8f9fa; border-radius: 12px;">
+            <h3 style="margin-top: 0; color: #666;">📋 Setup Checklist:</h3>
+            <ul style="color: #666; line-height: 1.6;">
+                <li>✅ Twilio account created</li>
+                <li>✅ Phone number purchased</li>
+                <li>✅ Credentials added to Supabase</li>
+                <li>🔄 Testing SMS functionality</li>
+            </ul>
+        </div>
+    </div>
+
+    <script type="module">
+        import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+        
+        // Replace with your Supabase URL and anon key
+        const supabaseUrl = 'YOUR_SUPABASE_URL'
+        const supabaseKey = 'YOUR_SUPABASE_ANON_KEY'
+        
+        const supabase = createClient(supabaseUrl, supabaseKey)
+        
+        window.testSMS = async function() {
+            const phoneNumber = document.getElementById('phoneNumber').value;
+            const statusDiv = document.getElementById('status');
+            
+            if (!phoneNumber || phoneNumber === '+1') {
+                statusDiv.innerHTML = '<div class="error">Please enter a valid phone number with country code</div>';
+                return;
+            }
+            
+            statusDiv.innerHTML = '<div style="padding: 15px; text-align: center;">⏳ Sending SMS...</div>';
+            
+            try {
+                const { data, error } = await supabase.auth.signInWithOtp({
+                    phone: phoneNumber
+                });
+                
+                if (error) {
+                    statusDiv.innerHTML = `<div class="error">❌ Error: ${error.message}</div>`;
+                } else {
+                    statusDiv.innerHTML = `<div class="success">✅ SMS sent successfully! Check your phone for the verification code.</div>`;
+                }
+            } catch (err) {
+                statusDiv.innerHTML = `<div class="error">❌ Error: ${err.message}</div>`;
+            }
+        }
+    </script>
+</body>
+</html>
