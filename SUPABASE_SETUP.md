@@ -64,37 +64,24 @@ CREATE TRIGGER on_auth_user_created
   FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
 ```
 
-### 2. Create Default Admin User
+### 2. Enable Authentication Providers
 
-In your Supabase dashboard, go to **Authentication > Users** and manually create an admin user:
+In your Supabase dashboard:
+1. Go to Authentication → Providers
+2. Enable Email provider
+3. Enable Phone provider (optional - for SMS invitations)
+4. Configure email templates if needed
 
-#### **Method 1: Add Metadata During User Creation (Preferred)**
-
-1. **Click "Add User"**
-2. **Fill basic information:**
-   - Email: `biztarasolutions@gmail.com`
-   - Password: `Admin123!`
-   - Confirm Password: `Admin123!`
-   - ✅ Check "Auto Confirm User" (important!)
-
-3. **Find the User Metadata section:**
-   - **Scroll down** in the form to find one of these sections:
-     - **"Raw User Meta Data"** (most common)
-     - **"User Metadata"** 
-     - **"Additional Data"**
-     - **"Custom Claims"**
-   - It will be a **text area** that accepts JSON
-
-4. **Add this JSON** in the metadata field:
-   ```json
-   {
-     "name": "System Administrator",
-     "role": "admin",
-     "status": "active"
-   }
-   ```
-
-5. **Click "Create User"**
+### Phone Authentication Setup (Optional)
+If you want to use phone number invitations:
+1. Go to Authentication → Providers
+2. Enable "Phone" authentication
+3. Configure an SMS provider:
+   - **Twilio**: Most popular, reliable service
+   - **MessageBird**: Good alternative
+   - **Vonage**: Another reliable option
+   - **TextLocal**: Community supported
+4. Add your SMS provider credentials in the configuration
 
 #### **Method 2: If No Metadata Field Visible (Alternative)**
 

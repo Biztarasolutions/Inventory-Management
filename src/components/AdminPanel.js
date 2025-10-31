@@ -99,8 +99,10 @@ const AdminPanel = () => {
 
 // Send Invites Component
 const SendInvites = ({ onSuccess, onError }) => {
+  const [inviteMethod, setInviteMethod] = useState('email'); // 'email' or 'phone'
   const [formData, setFormData] = useState({
     email: '',
+    phone: '',
     role: USER_ROLES.EMPLOYEE
   });
   const [loading, setLoading] = useState(false);
@@ -110,25 +112,44 @@ const SendInvites = ({ onSuccess, onError }) => {
     setLoading(true);
 
     try {
-      // For Supabase, we'll create a simple user registration
-      // Note: In production, you should use Supabase's proper invitation system
-      const { error } = await supabase.auth.signUp({
-        email: formData.email,
-        password: 'TempPass123!', // Temporary password - user will need to reset
-        options: {
-          data: {
-            role: formData.role,
-            name: formData.email.split('@')[0],
-            status: 'pending'
+      if (inviteMethod === 'email') {
+        // Email-based invitation
+        const { error } = await supabase.auth.signUp({
+          email: formData.email,
+          password: 'TempPass123!', // Temporary password - user will need to reset
+          options: {
+            data: {
+              role: formData.role,
+              name: formData.email.split('@')[0],
+              status: 'pending'
+            }
           }
-        }
-      });
+        });
 
-      if (error) {
-        onError(error.message);
+        if (error) {
+          onError(error.message);
+        } else {
+          onSuccess(`User ${formData.email} created successfully! They will receive an email to set up their account.`);
+          setFormData({ email: '', phone: '', role: USER_ROLES.EMPLOYEE });
+        }
       } else {
-        onSuccess(`User ${formData.email} created successfully! They will receive an email to set up their account.`);
-        setFormData({ email: '', role: USER_ROLES.EMPLOYEE });
+        // Phone-based invitation using OTP
+        const { error } = await supabase.auth.signInWithOtp({
+          phone: formData.phone,
+          options: {
+            data: {
+              role: formData.role,
+              status: 'pending'
+            }
+          }
+        });
+
+        if (error) {
+          onError(error.message);
+        } else {
+          onSuccess(`OTP sent to ${formData.phone}! The user will receive an SMS with a verification code to complete registration.`);
+          setFormData({ email: '', phone: '', role: USER_ROLES.EMPLOYEE });
+        }
       }
     } catch (error) {
       console.error('Error creating user:', error);
@@ -143,20 +164,75 @@ const SendInvites = ({ onSuccess, onError }) => {
       <h2 className="text-xl font-semibold text-gray-900 mb-6">Send User Invitation</h2>
       
       <form onSubmit={handleSubmit} className="max-w-md space-y-6">
+        {/* Invitation Method Selection */}
         <div>
-          <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
-            Email Address
+          <label className="block text-sm font-medium text-gray-700 mb-3">
+            Invitation Method
           </label>
-          <input
-            type="email"
-            id="email"
-            value={formData.email}
-            onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-            className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200"
-            placeholder="Enter user's Gmail address"
-            required
-          />
+          <div className="flex space-x-4">
+            <label className="flex items-center">
+              <input
+                type="radio"
+                name="inviteMethod"
+                value="email"
+                checked={inviteMethod === 'email'}
+                onChange={(e) => setInviteMethod(e.target.value)}
+                className="mr-2 text-purple-600"
+              />
+              <span className="text-sm">📧 Email</span>
+            </label>
+            <label className="flex items-center">
+              <input
+                type="radio"
+                name="inviteMethod"
+                value="phone"
+                checked={inviteMethod === 'phone'}
+                onChange={(e) => setInviteMethod(e.target.value)}
+                className="mr-2 text-purple-600"
+              />
+              <span className="text-sm">📱 Phone (SMS)</span>
+            </label>
+          </div>
         </div>
+
+        {/* Email Input */}
+        {inviteMethod === 'email' && (
+          <div>
+            <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
+              Email Address
+            </label>
+            <input
+              type="email"
+              id="email"
+              value={formData.email}
+              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200"
+              placeholder="Enter user's email address"
+              required
+            />
+          </div>
+        )}
+
+        {/* Phone Input */}
+        {inviteMethod === 'phone' && (
+          <div>
+            <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-2">
+              Phone Number
+            </label>
+            <input
+              type="tel"
+              id="phone"
+              value={formData.phone}
+              onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200"
+              placeholder="+1234567890 (with country code)"
+              required
+            />
+            <p className="mt-1 text-xs text-gray-500">
+              Include country code (e.g., +1 for US, +91 for India)
+            </p>
+          </div>
+        )}
 
         <div>
           <label htmlFor="role" className="block text-sm font-medium text-gray-700 mb-2">
@@ -185,23 +261,42 @@ const SendInvites = ({ onSuccess, onError }) => {
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
               </svg>
-              Sending Invitation...
+              {inviteMethod === 'email' ? 'Sending Email...' : 'Sending SMS...'}
             </div>
           ) : (
-            'Send Invitation'
+            inviteMethod === 'email' ? 'Send Email Invitation' : 'Send SMS Invitation'
           )}
         </button>
       </form>
 
       <div className="mt-8 p-4 bg-blue-50 rounded-xl border border-blue-200">
         <h3 className="text-sm font-medium text-blue-900 mb-2">How it works:</h3>
-        <ul className="text-sm text-blue-800 space-y-1">
-          <li>• The user will receive an email invitation with a secure registration link</li>
-          <li>• They can click the link to create their username and password</li>
-          <li>• Once registered, they can log in with their credentials</li>
-          <li>• Their access will be limited based on the role you assign</li>
-        </ul>
+        {inviteMethod === 'email' ? (
+          <ul className="text-sm text-blue-800 space-y-1">
+            <li>• The user will receive an email invitation with a secure registration link</li>
+            <li>• They can click the link to create their username and password</li>
+            <li>• Once registered, they can log in with their credentials</li>
+            <li>• Their access will be limited based on the role you assign</li>
+          </ul>
+        ) : (
+          <ul className="text-sm text-blue-800 space-y-1">
+            <li>• The user will receive an SMS with a 6-digit verification code</li>
+            <li>• They need to enter this code within 60 seconds to verify their phone</li>
+            <li>• Once verified, they can set up their profile and password</li>
+            <li>• They can then log in using their phone number for future sessions</li>
+          </ul>
+        )}
       </div>
+
+      {inviteMethod === 'phone' && (
+        <div className="mt-4 p-4 bg-amber-50 rounded-xl border border-amber-200">
+          <h3 className="text-sm font-medium text-amber-900 mb-2">⚠️ SMS Setup Required:</h3>
+          <p className="text-sm text-amber-800">
+            Phone authentication requires SMS provider configuration in your Supabase project settings. 
+            Make sure you have enabled phone auth and configured an SMS provider (Twilio, MessageBird, Vonage, or TextLocal).
+          </p>
+        </div>
+      )}
     </div>
   );
 };
