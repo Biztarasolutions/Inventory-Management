@@ -1,5 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link, useLocation } from 'react-router-dom';
+import { useAuth, USER_ROLES } from '../contexts/AuthContext';
+import Login from './Login';
+import PasswordReset from './PasswordReset';
 
 export function Navigation({ navOpen, setNavOpen, currentPage }) {
   const [sidebarWidth, setSidebarWidth] = useState(200);
@@ -9,14 +12,19 @@ export function Navigation({ navOpen, setNavOpen, currentPage }) {
     stockManagement: false,
     history: false
   }); // All menus collapsed by default
+  const [showLogin, setShowLogin] = useState(false);
+  const [showPasswordReset, setShowPasswordReset] = useState(false);
   const location = useLocation();
+  const { user, isAuthenticated, hasPermission, logout } = useAuth();
 
-  const navItems = [
+  // Base navigation items
+  const allNavItems = [
     {
       type: 'menu',
       id: 'billingSales',
       label: 'Billing & Sales',
       icon: '💰',
+      requiredRole: USER_ROLES.EMPLOYEE, // Available to all roles
       children: [
         { to: '/create-bill', label: 'Create Bill', icon: '🧾' },
         { to: '/sales', label: 'Sales', icon: '💰' },
@@ -27,7 +35,8 @@ export function Navigation({ navOpen, setNavOpen, currentPage }) {
       type: 'menu',
       id: 'stockManagement',
       label: 'Stock Management',
-      icon: '�',
+      icon: '📦',
+      requiredRole: USER_ROLES.OWNER, // Only Owner and Admin
       children: [
         { to: '/add-stocks', label: 'Add Stocks', icon: '📦' },
         { to: '/stock-inventory', label: 'Stock Inventory', icon: <img src="/stock%20inventory.png" alt="Stock Inventory" style={{ width: 22, height: 22, display: 'inline', verticalAlign: 'middle' }} /> },
@@ -38,6 +47,7 @@ export function Navigation({ navOpen, setNavOpen, currentPage }) {
       id: 'history',
       label: 'History',
       icon: '📊',
+      requiredRole: USER_ROLES.OWNER, // Only Owner and Admin
       children: [
         { to: '/orders', label: 'Orders', icon: '📋' },
         { to: '/stock-history', label: 'Stock History', icon: '🕑' },
@@ -45,6 +55,22 @@ export function Navigation({ navOpen, setNavOpen, currentPage }) {
       ]
     },
   ];
+
+  // Add Admin Panel for Admin users
+  if (user?.user_metadata?.role === USER_ROLES.ADMIN) {
+    allNavItems.push({
+      type: 'link',
+      to: '/admin-panel',
+      label: 'Admin Panel',
+      icon: '⚙️',
+      requiredRole: USER_ROLES.ADMIN
+    });
+  }
+
+  // Filter navigation items based on user role
+  const navItems = isAuthenticated() 
+    ? allNavItems.filter(item => hasPermission(item.requiredRole))
+    : []; // Show no navigation when not authenticated
 
   const toggleMenu = (menuId) => {
     setExpandedMenus(prev => {
@@ -117,7 +143,65 @@ export function Navigation({ navOpen, setNavOpen, currentPage }) {
             </div>
           </div>
           <div className="flex items-center space-x-4">
-            <span className="text-sm font-normal text-white/70">{currentPage}</span>
+            {isAuthenticated() ? (
+              <>
+                {/* Show Admin Panel button for Admin users */}
+                {user?.user_metadata?.role === USER_ROLES.ADMIN && (
+                  <Link
+                    to="/admin-panel"
+                    className="hidden md:block bg-white/10 hover:bg-white/20 px-3 py-2 rounded-lg backdrop-blur-sm border border-white/20 text-sm font-medium text-white/90 transition-all duration-200 hover:scale-105"
+                  >
+                    Admin Panel
+                  </Link>
+                )}
+                
+                {/* Current page name */}
+                <span className="text-sm font-normal text-white/70">{currentPage}</span>
+                
+                {/* User greeting and logout */}
+                <div className="relative group">
+                  <button className="flex items-center space-x-2 bg-white/10 hover:bg-white/20 px-3 py-2 rounded-lg backdrop-blur-sm border border-white/20 text-sm font-medium text-white/90 transition-all duration-200">
+                    <span>Hi, {user?.name || user?.username}</span>
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
+                  
+                  {/* Dropdown menu */}
+                  <div className="absolute right-0 top-full mt-2 w-48 bg-white rounded-xl shadow-2xl border border-gray-200/50 backdrop-blur-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
+                    <div className="p-2">
+                      <div className="px-3 py-2 text-sm text-gray-500 border-b border-gray-100">
+                        <div className="font-medium text-gray-900">{user?.name || user?.username}</div>
+                        <div className="text-xs">{user?.email}</div>
+                        <div className="text-xs capitalize font-medium text-purple-600">{user?.role}</div>
+                      </div>
+                      <button
+                        onClick={logout}
+                        className="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg transition-colors duration-150 flex items-center space-x-2"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                        </svg>
+                        <span>Sign Out</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <>
+                {/* Current page name */}
+                <span className="text-sm font-normal text-white/70">{currentPage}</span>
+                
+                {/* Login button */}
+                <button
+                  onClick={() => setShowLogin(true)}
+                  className="bg-white/10 hover:bg-white/20 px-4 py-2 rounded-lg backdrop-blur-sm border border-white/20 text-sm font-medium text-white/90 transition-all duration-200 hover:scale-105"
+                >
+                  Login
+                </button>
+              </>
+            )}
           </div>
         </div>
       </header>
@@ -346,6 +430,16 @@ export function Navigation({ navOpen, setNavOpen, currentPage }) {
           })}
         </div>
       </nav>
+
+      {/* Login Modal */}
+      {showLogin && (
+        <Login onClose={() => setShowLogin(false)} />
+      )}
+
+      {/* Password Reset Modal */}
+      {showPasswordReset && (
+        <PasswordReset onClose={() => setShowPasswordReset(false)} />
+      )}
     </>
   );
 }

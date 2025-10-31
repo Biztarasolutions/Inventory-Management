@@ -3,6 +3,8 @@ import { BrowserRouter as Router, Routes, Route, useLocation } from "react-route
 import "./responsive.css";
 import "./styles.css";
 import { Navigation } from "./components/Navigation";
+import { AuthProvider, USER_ROLES } from "./contexts/AuthContext";
+import ProtectedRoute from "./components/ProtectedRoute";
 import CreateBill from "./components/CreateBill";
 import Orders from "./components/Orders";
 import { StockInventory } from "./components/StockInventory";
@@ -10,6 +12,9 @@ import { AddStocks } from "./components/AddStocks";
 import { StockHistory } from "./components/StockHistory";
 import Sales from "./components/Sales";
 import Expense from "./components/Expense";
+import AdminPanel from "./components/AdminPanel";
+import Register from "./components/Register";
+import PasswordReset from "./components/PasswordReset";
 
 // Constants for sizes
 export const SIZES = ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL'];
@@ -58,7 +63,10 @@ const pageNames = {
   "/sales": "Sales",
   "/expense": "Expense",
   "/modification": "Modifications",
-  "/": "Add Stocks"
+  "/admin-panel": "Admin Panel",
+  "/register": "Create Account",
+  "/reset-password": "Reset Password",
+  "/": "Create Bill"
 };
 
 function AppContent({ navOpen, setNavOpen }) {
@@ -79,15 +87,65 @@ function AppContent({ navOpen, setNavOpen }) {
       <div className="flex-1 flex flex-col overflow-hidden mt-16">
         <main className="flex-1 overflow-y-auto bg-gray-100">
           <Routes>
-            <Route path="/" element={<CreateBill />} />
-            <Route path="/create-bill" element={<CreateBill />} />
-            <Route path="/orders" element={<Orders />} />
-            <Route path="/add-stocks" element={<AddStocks />} />
-            <Route path="/stock-inventory" element={<StockInventory />} />
-            <Route path="/stock-history" element={<StockHistory />} />
-            <Route path="/sales" element={<Sales />} />
-            <Route path="/expense" element={<Expense />} />
-            <Route path="/modification" element={require('./components/Modification').default()} />
+            {/* Public Routes */}
+            <Route path="/register" element={<Register />} />
+            <Route path="/reset-password" element={<PasswordReset />} />
+            
+            {/* Protected Routes - Available to all authenticated users */}
+            <Route path="/" element={
+              <ProtectedRoute>
+                <CreateBill />
+              </ProtectedRoute>
+            } />
+            <Route path="/create-bill" element={
+              <ProtectedRoute requiredRole={USER_ROLES.EMPLOYEE}>
+                <CreateBill />
+              </ProtectedRoute>
+            } />
+            <Route path="/sales" element={
+              <ProtectedRoute requiredRole={USER_ROLES.EMPLOYEE}>
+                <Sales />
+              </ProtectedRoute>
+            } />
+            <Route path="/modification" element={
+              <ProtectedRoute requiredRole={USER_ROLES.EMPLOYEE}>
+                {require('./components/Modification').default()}
+              </ProtectedRoute>
+            } />
+
+            {/* Owner and Admin only routes */}
+            <Route path="/orders" element={
+              <ProtectedRoute requiredRole={USER_ROLES.OWNER}>
+                <Orders />
+              </ProtectedRoute>
+            } />
+            <Route path="/add-stocks" element={
+              <ProtectedRoute requiredRole={USER_ROLES.OWNER}>
+                <AddStocks />
+              </ProtectedRoute>
+            } />
+            <Route path="/stock-inventory" element={
+              <ProtectedRoute requiredRole={USER_ROLES.OWNER}>
+                <StockInventory />
+              </ProtectedRoute>
+            } />
+            <Route path="/stock-history" element={
+              <ProtectedRoute requiredRole={USER_ROLES.OWNER}>
+                <StockHistory />
+              </ProtectedRoute>
+            } />
+            <Route path="/expense" element={
+              <ProtectedRoute requiredRole={USER_ROLES.OWNER}>
+                <Expense />
+              </ProtectedRoute>
+            } />
+
+            {/* Admin only routes */}
+            <Route path="/admin-panel" element={
+              <ProtectedRoute requiredRole={USER_ROLES.ADMIN}>
+                <AdminPanel />
+              </ProtectedRoute>
+            } />
           </Routes>
         </main>
       </div>
@@ -99,7 +157,9 @@ function App() {
   const [navOpen, setNavOpen] = useState(true);
   return (
     <Router>
-      <AppContent navOpen={navOpen} setNavOpen={setNavOpen} />
+      <AuthProvider>
+        <AppContent navOpen={navOpen} setNavOpen={setNavOpen} />
+      </AuthProvider>
     </Router>
   );
 }
