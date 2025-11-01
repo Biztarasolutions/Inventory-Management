@@ -91,6 +91,7 @@ const CreateBill = () => {
   const [sizeOptions, setSizeOptions] = useState({});
   const [customerOptions, setCustomerOptions] = useState([]);
   const [customerDropdownCloseTrigger, setCustomerDropdownCloseTrigger] = useState(0);
+  const [showCancelDialog, setShowCancelDialog] = useState(false);
 
   const fetchData = async () => {
     try {
@@ -476,7 +477,13 @@ const CreateBill = () => {
     });
   };
 
-  const handlePrintBill = async () => {
+  // Print bill only - no data saving
+  const handlePrintBill = () => {
+    window.print();
+  };
+
+  // Place order - save data and reset form
+  const handlePlaceOrder = async () => {
     try {
       // First get the next order number
       const { data: lastOrder, error: lastOrderError } = await supabase
@@ -628,51 +635,96 @@ const CreateBill = () => {
         throw stockHistoryError;
       }
       
-      // Print the bill after saving
-      window.print();
+      // Order saved successfully
+      alert('Order placed successfully!');
+      
+      // Reset form after successful order
+      setTimeout(() => {
+        setCustomer({
+          phone: '',
+          name: '',
+          isExisting: false
+        });
+
+        setBillItems([
+          { 
+            id: 1, 
+            product_code: '', 
+            size: '', 
+            mrp: 0, 
+            quantity: 1, 
+            discount: { type: 'percentage', value: 0 },
+            sellingPrice: 0,
+            total: 0,
+            availableQuantity: 0
+          }
+        ]);
+
+        setPayment({
+          upi: 0,
+          cash: 0,
+          payLater: 0
+        });
+
+        setDiscount({
+          type: 'percentage',
+          value: 0
+        });
+      }, 100);
     } catch (error) {
-      console.error('Error processing bill:', error);
+      console.error('Error processing order:', error);
       alert('Failed to save order information: ' + error.message);
       return;
     }
-
-    setTimeout(() => {
-      setCustomer({
-        phone: '',
-        name: '',
-        isExisting: false
-      });
-
-      setBillItems([
-        { 
-          id: 1, 
-          product_code: '', 
-          size: '', 
-          mrp: 0, 
-          quantity: 1, 
-          discount: { type: 'percentage', value: 0 },
-          sellingPrice: 0,
-          total: 0,
-          availableQuantity: 0
-        }
-      ]);
-
-
-
-      setPayment({
-        upi: 0,
-        cash: 0,
-        payLater: 0
-      });
-
-      setDiscount({
-        type: 'percentage',
-        value: 0
-      });
-    }, 100);
   };
 
+  // Cancel order - reset form without saving
+  const handleCancelOrder = () => {
+    setShowCancelDialog(true);
+  };
 
+  const confirmCancelOrder = () => {
+    // Reset all form data
+    setCustomer({
+      phone: '',
+      name: '',
+      isExisting: false
+    });
+
+    setBillItems([
+      { 
+        id: 1, 
+        product_code: '', 
+        size: '', 
+        mrp: 0, 
+        quantity: 1, 
+        discount: { type: 'percentage', value: 0 },
+        sellingPrice: 0,
+        total: 0,
+        availableQuantity: 0
+      }
+    ]);
+
+    setPayment({
+      upi: 0,
+      cash: 0,
+      payLater: 0
+    });
+
+    setDiscount({
+      type: 'percentage',
+      value: 0
+    });
+
+    // Reset customer input type and last order info
+    setCustomerInputType('none');
+    setLastOrderAt(null);
+    setShowCancelDialog(false);
+  };
+
+  const closeCancelDialog = () => {
+    setShowCancelDialog(false);
+  };
 
   return (
     <div className="p-6 pb-24">
@@ -680,7 +732,7 @@ const CreateBill = () => {
           <div className="space-y-6">
               <div className="flex items-start justify-between">
                 <h1 className="text-2xl font-bold">Create Bill</h1>
-                {lastOrderAt ? (
+                {lastOrderAt && (customer.phone || customer.name) ? (
                   <div className="text-right ml-4" title={formatDateTime(lastOrderAt)}>
                     <div className="text-sm text-gray-500">Last Order</div>
                     <div className="text-sm font-medium text-gray-700">{timeAgo(lastOrderAt)}</div>
@@ -713,6 +765,7 @@ const CreateBill = () => {
                       setCustomer(prev => ({ ...prev, isExisting: false, phone: '', name: '' }));
                       setCustomerInputType('unknown');
                       setCustomerInputRaw('');
+                      setLastOrderAt(null);
                     }
                   }}
                   onChange={(selected) => {
@@ -1047,6 +1100,31 @@ const CreateBill = () => {
             </div>
           </div>
 
+          {/* Print Bill Button - Above Payment Mode */}
+          <div className="flex justify-center">
+            <button
+              onClick={handlePrintBill}
+              className="bg-green-600 text-white py-2 px-6 rounded hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+              disabled={
+                !customer.phone || 
+                customer.phone.length !== 10 || 
+                !customer.name.trim() ||
+                !billItems.some(item => item.product_code && item.size && item.quantity > 0)
+              }
+              title={
+                !customer.phone || customer.phone.length !== 10 
+                  ? "Please enter a valid 10-digit phone number" 
+                  : !customer.name.trim() 
+                    ? "Please enter customer name"
+                    : !billItems.some(item => item.product_code && item.size && item.quantity > 0)
+                      ? "Please select at least one product with size and quantity"
+                      : "Print bill without saving order"
+              }
+            >
+              Print Bill
+            </button>
+          </div>
+
           <div className="bg-gray-50 p-4 rounded-md">
             <h2 className="text-lg font-semibold mb-3">Payment Mode</h2>
             <div className="space-y-2">
@@ -1134,32 +1212,43 @@ const CreateBill = () => {
                 </span>
               </div>
             </div>
-          </div>
 
-          <button
-            onClick={handlePrintBill}
-            className="w-full bg-blue-600 text-white py-2 px-4 rounded hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
-            disabled={
-              calculateRemaining() !== 0 || 
-              !customer.phone || 
-              customer.phone.length !== 10 || 
-              !customer.name.trim() ||
-              !billItems.some(item => item.product_code && item.size && item.quantity > 0)
-            }
-            title={
-              !customer.phone || customer.phone.length !== 10 
-                ? "Please enter a valid 10-digit phone number" 
-                : !customer.name.trim() 
-                  ? "Please enter customer name"
-                  : !billItems.some(item => item.product_code && item.size && item.quantity > 0)
-                    ? "Please select at least one product with size and quantity"
-                    : calculateRemaining() !== 0 
-                      ? "Please ensure payment equals total order amount"
-                      : ""
-            }
-          >
-            Print Bill
-          </button>
+            {/* Order Action Buttons */}
+            <div className="mt-4 flex justify-center gap-4">
+              <button
+                onClick={handleCancelOrder}
+                className="bg-red-600 text-white py-2 px-6 rounded hover:bg-red-700"
+                title="Cancel order and reset all data"
+              >
+                Cancel Order
+              </button>
+              
+              <button
+                onClick={handlePlaceOrder}
+                className="bg-blue-600 text-white py-2 px-6 rounded hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                disabled={
+                  calculateRemaining() !== 0 || 
+                  !customer.phone || 
+                  customer.phone.length !== 10 || 
+                  !customer.name.trim() ||
+                  !billItems.some(item => item.product_code && item.size && item.quantity > 0)
+                }
+                title={
+                  !customer.phone || customer.phone.length !== 10 
+                    ? "Please enter a valid 10-digit phone number" 
+                    : !customer.name.trim() 
+                      ? "Please enter customer name"
+                      : !billItems.some(item => item.product_code && item.size && item.quantity > 0)
+                        ? "Please select at least one product with size and quantity"
+                        : calculateRemaining() !== 0 
+                          ? "Please ensure payment equals total order amount"
+                          : "Place order and save to database"
+                }
+              >
+                Place Order
+              </button>
+            </div>
+          </div>
         </div>
       </div>
       
@@ -1184,6 +1273,39 @@ const CreateBill = () => {
           }
         }
       `}</style>
+
+      {/* Cancel Order Confirmation Dialog */}
+      {showCancelDialog && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl p-6 m-4 max-w-sm w-full">
+            <div className="flex items-center justify-center w-12 h-12 mx-auto mb-4 bg-red-100 rounded-full">
+              <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
+              </svg>
+            </div>
+            <div className="text-center">
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">Cancel Order</h3>
+              <p className="text-sm text-gray-600 mb-6">
+                Are you sure you want to cancel the order?
+              </p>
+              <div className="flex gap-3 justify-center">
+                <button
+                  onClick={closeCancelDialog}
+                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 border border-gray-300 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500"
+                >
+                  Keep Editing
+                </button>
+                <button
+                  onClick={confirmCancelOrder}
+                  className="px-4 py-2 text-sm font-medium text-white bg-red-600 border border-transparent rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500"
+                >
+                  Yes, Cancel Order
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
