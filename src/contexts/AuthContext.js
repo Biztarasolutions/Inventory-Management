@@ -85,27 +85,20 @@ export const AuthProvider = ({ children }) => {
   // Login function
   const login = async (username, password) => {
     try {
-      console.log('🔍 Starting login with username:', username);
-      
       // First, try to find the email associated with this username
-      const { data: profileData, error: profileError } = await supabase
+      const { data: profileData } = await supabase
         .from('profiles')
         .select('email')
         .eq('username', username)
         .single();
-
-      console.log('📊 Profile query result:', { profileData, profileError });
 
       let emailToUse = username; // If username is actually an email
 
       if (profileData && profileData.email) {
         // Found username, use the associated email
         emailToUse = profileData.email;
-        console.log('✅ Found email for username:', username, '→', emailToUse);
       } else if (!username.includes('@')) {
         // Username provided but not found in database
-        console.log('❌ Username not found in profiles:', username);
-        console.log('❌ Profile error:', profileError);
         return { success: false, error: 'Invalid username or password' };
       }
 
@@ -119,6 +112,7 @@ export const AuthProvider = ({ children }) => {
       }
 
       const enrichedUser = await enrichUserData(data.user);
+      
       setSession(data.session);
       setUser(enrichedUser);
       return { success: true };
@@ -201,44 +195,69 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  // Enrich user data with profile information
+  // Enrich user data with profile information - optimized for speed
   const enrichUserData = async (user) => {
     if (!user) return null;
     
     try {
-      const { data: profileData } = await supabase
+      // Add timeout to prevent slow database queries from blocking UI
+      const profilePromise = supabase
         .from('profiles')
         .select('username, name, role, status')
         .eq('id', user.id)
         .single();
       
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Profile query timeout')), 2000)
+      );
+      
+      const { data: profileData } = await Promise.race([profilePromise, timeoutPromise]);
+      
       return {
         ...user,
         username: profileData?.username,
         name: profileData?.name,
-        role: profileData?.role,
-        status: profileData?.status
+        role: profileData?.role || USER_ROLES.EMPLOYEE,
+        status: profileData?.status || 'active'
       };
     } catch (error) {
-      console.error('Error fetching profile data:', error);
-      return user;
+      // Return user with defaults if profile query fails or times out
+      return {
+        ...user,
+        username: user.email?.split('@')[0] || 'user',
+        name: user.user_metadata?.name || user.email?.split('@')[0] || 'User',
+        role: user.user_metadata?.role || USER_ROLES.EMPLOYEE,
+        status: 'active'
+      };
     }
   };
 
-  // Initialize auth session
+  // Initialize auth session - optimized for speed
   const initializeAuth = useCallback(async () => {
     try {
-      const { data: { session }, error } = await supabase.auth.getSession();
+      // Add timeout to session check to prevent hanging
+      const sessionPromise = supabase.auth.getSession();
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Session check timeout')), 2500)
+      );
+      
+      const { data: { session }, error } = await Promise.race([sessionPromise, timeoutPromise]);
       
       if (error) {
         console.error('Error getting session:', error);
       } else if (session) {
-        const enrichedUser = await enrichUserData(session.user);
+        // Set basic session immediately for faster UI response
         setSession(session);
-        setUser(enrichedUser);
+        setUser(session.user);
+        setLoading(false);
+        
+        // Enrich user data in background
+        enrichUserData(session.user).then(enrichedUser => {
+          setUser(enrichedUser);
+        });
       }
     } catch (error) {
-      console.error('Error initializing auth:', error);
+      console.error('Error initializing auth:', error.message);
     } finally {
       setLoading(false);
     }
@@ -247,6 +266,11 @@ export const AuthProvider = ({ children }) => {
     // Effect to initialize auth and listen for auth changes
   useEffect(() => {
     initializeAuth();
+
+    // Safety timeout to prevent infinite loading - reduced for faster UI response
+    const loadingTimeout = setTimeout(() => {
+      setLoading(false);
+    }, 3000); // 3 second timeout for faster initial load
 
     // Listen for auth state changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
@@ -259,9 +283,13 @@ export const AuthProvider = ({ children }) => {
         setUser(null);
       }
       setLoading(false);
+      clearTimeout(loadingTimeout); // Clear timeout if auth resolves
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      subscription.unsubscribe();
+      clearTimeout(loadingTimeout);
+    };
   }, [initializeAuth]);
 
   const value = {
